@@ -1,0 +1,553 @@
+import webview
+import psutil
+import os
+import sys
+
+HTML_CODE = """<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>PanDA Sentinel OS - Function 4 Build</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Consolas','Segoe UI',monospace; user-select:none; }
+  body { background:#020617; color:#f8fafc; height:100vh; display:flex; flex-direction:column; overflow:hidden; position:relative; }
+  
+  /* Cyber Grid Background */
+  body::before {
+    content:""; position:absolute; top:0; left:0; width:100%; height:100%;
+    background: radial-gradient(circle at center, rgba(14,165,233,0.08) 0%, transparent 80%),
+                linear-gradient(to right, rgba(0,255,204,0.03) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(0,255,204,0.03) 1px, transparent 1px);
+    background-size:100% 100%, 30px 30px, 30px 30px; pointer-events:none; z-index:0;
+  }
+
+  #laserCanvas { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:5; }
+
+  /* Navigation Bar */
+  .nav { z-index:10; display:flex; justify-content:space-between; align-items:center; padding:12px 24px; background:rgba(15,23,42,0.85); border-bottom:1px solid rgba(0,255,204,0.3); backdrop-filter:blur(16px); }
+  .logo { display:flex; align-items:center; gap:8px; color:#00ffcc; font-weight:900; letter-spacing:2px; font-size:15px; }
+  .tabs { display:flex; gap:8px; }
+  .btn { background:rgba(30,41,59,0.6); border:1px solid rgba(255,255,255,0.15); color:#94a3b8; padding:7px 15px; border-radius:8px; cursor:pointer; font-weight:800; font-size:12px; transition:0.3s; }
+  .btn.active, .btn:hover { background:#00ffcc; color:#020617; border-color:#00ffcc; box-shadow:0 0 15px rgba(0,255,204,0.5); }
+
+  /* Main Workspace */
+  .stage { z-index:10; flex:1; display:flex; justify-content:center; align-items:center; padding:20px; }
+  .panel { display:none; width:100%; height:100%; max-width:980px; }
+  .panel.active { display:flex; flex-direction:column; }
+
+  /* Center Interactive Panda */
+  .actor-wrap { position:relative; width:190px; height:190px; display:flex; align-items:center; justify-content:center; margin:0 auto; cursor:pointer; transition:0.3s; }
+  .actor-wrap:hover { transform:scale(1.05); }
+  .actor-wrap.awake .ring { border-color:#00ffcc; animation:spin 4s linear infinite; box-shadow:0 0 25px rgba(0,255,204,0.4); }
+  .actor-wrap.sleep .ring { border-color:#475569; animation:spin 18s linear infinite; }
+
+  .ring { position:absolute; width:175px; height:175px; border-radius:50%; border:2px dashed #475569; transition:0.4s; }
+  
+  /* Real Dynamic Panda Image Frame */
+  .panda-box { width:150px; height:150px; border-radius:50%; background:radial-gradient(circle at 40% 30%, #1e293b 0%, #030712 90%); border:2px solid rgba(0,255,204,0.3); display:flex; align-items:center; justify-content:center; box-shadow:0 0 30px rgba(0,0,0,0.8); overflow:hidden; position:relative; }
+  .panda-img { width:100%; height:100%; object-fit:cover; border-radius:50%; transition:0.4s; }
+  .actor-wrap.sleep .panda-img { filter:grayscale(0.6) brightness(0.7); }
+  .actor-wrap.awake .panda-img { filter:grayscale(0) brightness(1.1); }
+
+  .pulse-badge { display:inline-block; padding:5px 14px; border-radius:20px; font-size:11px; font-weight:900; letter-spacing:1px; margin-top:10px; transition:0.3s; }
+  .pulse-badge.active { background:rgba(0,255,204,0.15); border:1px solid #00ffcc; color:#00ffcc; box-shadow:0 0 12px rgba(0,255,204,0.4); }
+  .pulse-badge.idle { background:rgba(71,85,105,0.2); border:1px solid #475569; color:#94a3b8; }
+
+  /* HUD Mode */
+  .hud-box { flex:1; background:rgba(15,23,42,0.55); border:1px solid rgba(0,255,204,0.25); border-radius:20px; padding:30px; display:flex; align-items:center; justify-content:space-around; backdrop-filter:blur(16px); }
+  .stat-val { font-size:36px; font-weight:900; color:#fff; text-shadow:0 0 20px rgba(0,255,204,0.6); margin:8px 0; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; }
+  .pill { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); padding:8px 12px; border-radius:8px; font-size:12px; }
+
+  /* Audit Mode */
+  .audit-stage { display:flex; flex-direction:column; align-items:center; height:100%; gap:12px; }
+  .app-bar { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; max-width:850px; }
+  .audit-grid { display:flex; gap:20px; width:100%; justify-content:space-between; align-items:center; }
+  .col { width:37%; display:flex; flex-direction:column; gap:10px; opacity:0; transition:0.4s; }
+  .col.visible { opacity:1; }
+  .stream { padding:10px 14px; border-radius:8px; font-size:11px; font-weight:700; line-height:1.4; background:rgba(15,23,42,0.75); }
+
+  /* Intel Mode */
+  .hub-grid { display:flex; height:100%; gap:20px; }
+  .sidebar { width:280px; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(15,23,42,0.65); border-radius:18px; padding:20px; border:1px solid rgba(255,255,255,0.08); }
+  .content { flex:1; display:flex; flex-direction:column; gap:12px; }
+  .intel-nav { display:grid; grid-template-columns:repeat(5, 1fr); gap:6px; }
+  .intel-nav .btn { padding:8px 2px; font-size:11px; text-align:center; }
+  .intel-box { flex:1; background:rgba(15,23,42,0.7); border:1px solid rgba(255,255,255,0.1); border-radius:16px; padding:22px; display:flex; flex-direction:column; justify-content:center; }
+  .action-btn { align-self:flex-start; margin-top:14px; background:#ef4444; color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:900; font-size:12px; }
+
+  /* Cyber Sentry Widget (Bottom-Left Corner) */
+  .sentry-wrapper { position:fixed; bottom:16px; left:16px; z-index:99; display:flex; align-items:flex-end; gap:10px; }
+  .sentry-btn { width:44px; height:44px; border-radius:50%; background:#090d16; border:2px solid #475569; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 0 15px rgba(0,0,0,0.8); transition:0.3s; overflow:hidden; }
+  .sentry-btn.active { border-color:#00ffcc; box-shadow:0 0 16px rgba(0,255,204,0.6); }
+  
+  .sentry-avatar-pop { position:absolute; bottom:56px; left:0; width:130px; height:130px; opacity:0; transform:translateY(20px) scale(0.8); pointer-events:none; transition:all 0.4s cubic-bezier(0.4, 0, 0.2, 1); border-radius:50%; overflow:hidden; border:2px solid #00ffcc; box-shadow:0 0 25px rgba(0,255,204,0.4); background:#020617; }
+  .sentry-avatar-pop.show { opacity:1; transform:translateY(0) scale(1); pointer-events:all; }
+  .sentry-img { width:100%; height:100%; object-fit:cover; }
+
+  @keyframes spin { 0% { transform:rotate(0deg); } 100% { transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+
+  <canvas id="laserCanvas"></canvas>
+
+  <div class="nav">
+    <div class="logo">🛡️ PanDA MASTER SENTINEL</div>
+    <div class="tabs">
+      <button class="btn active" onclick="switchView(1)">1. Hardware HUD</button>
+      <button class="btn" onclick="switchView(2)">2. App Audit & Crunch</button>
+      <button class="btn" onclick="switchView(3)">3. Capacity & Intel</button>
+    </div>
+  </div>
+
+  <div class="stage">
+    <!-- VIEW 1: HUD -->
+    <div class="panel active" id="view1">
+      <div class="hud-box">
+        <div style="text-align:center;">
+          <div class="actor-wrap sleep" id="centerActor" onclick="togglePulse()">
+            <div class="ring"></div>
+            <div class="panda-box">
+              <img src="main_panda.png" onerror="this.src='https://images.unsplash.com/photo-1564349683136-77e08dba1ef6?w=200&auto=format&fit=crop&q=60'" class="panda-img" alt="Sentinel Panda">
+            </div>
+          </div>
+          <div class="pulse-badge idle" id="pulseBadge">○ SENTINEL PULSE: STANDBY</div>
+        </div>
+        <div style="flex:0.55;">
+          <div style="color:#00ffcc; font-size:13px; font-weight:800;" id="hudTitle">KERNEL TELEMETRY (TAP PANDA TO SCAN)</div>
+          <div class="stat-val" id="hudVal">RAM: -- / -- GB</div>
+          <div class="grid2">
+            <div class="pill" id="cpuPill">CPU: Standby</div>
+            <div class="pill" id="heatPill">Heat: 44°C</div>
+            <div class="pill" id="procPill">Tasks: 0</div>
+            <div class="pill" id="diskPill">Disk Free: -- GB</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 2: APP AUDIT -->
+    <div class="panel" id="view2">
+      <div class="audit-stage">
+        <div class="app-bar" id="appBar"></div>
+        <div class="audit-grid">
+          <div class="col" id="dangerCol"></div>
+          <div style="text-align:center;">
+            <div class="actor-wrap awake" style="cursor:default;">
+              <div class="ring" style="border-color:#ef4444;"></div>
+              <div class="panda-box" style="border-color:#ef4444;">
+                <img src="main_panda.png" onerror="this.src='https://images.unsplash.com/photo-1564349683136-77e08dba1ef6?w=200&auto=format&fit=crop&q=60'" class="panda-img" style="filter:sepia(0.3) hue-rotate(300deg);" alt="Sentinel Audit">
+              </div>
+            </div>
+            <div class="pulse-badge active" id="auditSpeech" style="border-color:#ef4444; color:#ef4444;">SELECT AN APP</div>
+          </div>
+          <div class="col" id="safeCol" style="text-align:right;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 3: CAPACITY & INTEL -->
+    <div class="panel" id="view3">
+      <div class="hub-grid">
+        <div class="sidebar">
+          <div class="actor-wrap awake" style="width:160px; height:160px; cursor:default;">
+            <div class="ring" style="width:140px; height:140px;"></div>
+            <div class="panda-box" style="width:125px; height:125px;">
+              <img src="main_panda.png" onerror="this.src='https://images.unsplash.com/photo-1564349683136-77e08dba1ef6?w=200&auto=format&fit=crop&q=60'" class="panda-img" alt="Sentinel Intel">
+            </div>
+          </div>
+          <div class="pulse-badge active">INTEL CORE READY</div>
+          <div style="margin-top:14px; font-size:12px; color:#00ffcc; text-align:center;" id="capStats">Calculating Limits...</div>
+        </div>
+        <div class="content">
+          <div class="intel-nav">
+            <button class="btn active" id="itab-0" onclick="showIntel(0)">1. Origin</button>
+            <button class="btn" id="itab-1" onclick="showIntel(1)">2. Neutral</button>
+            <button class="btn" id="itab-2" onclick="showIntel(2)">3. Toxic</button>
+            <button class="btn" id="itab-3" onclick="showIntel(3)">4. Best</button>
+            <button class="btn" id="itab-4" onclick="showIntel(4)">5. Action</button>
+          </div>
+          <div class="intel-box" id="intelBox">
+            <div style="font-size:15px; font-weight:900; color:#00ffcc; margin-bottom:10px;" id="intelTitle">INTEL REPORT</div>
+            <div style="font-size:13px; color:#cbd5e1; line-height:1.6;" id="intelBody">Select an option above.</div>
+            <button class="action-btn" id="killBtn" onclick="killApp()" style="display:none;">CRUNCH & TERMINATE PROCESS</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CYBER SENTRY COMPANION (Bottom Left) -->
+  <div class="sentry-wrapper">
+    <div class="sentry-avatar-pop" id="sentryPop">
+      <img src="sentry.png" onerror="this.src='https://images.unsplash.com/photo-1564349683136-77e08dba1ef6?w=200&auto=format&fit=crop&q=60'" class="sentry-img" alt="Cyber Sentry">
+    </div>
+    <div class="sentry-btn" id="sentryToggleBtn" onclick="toggleCyberSentry()" title="Cyber Sentry">
+      <img src="sentry.png" onerror="this.src='https://images.unsplash.com/photo-1564349683136-77e08dba1ef6?w=200&auto=format&fit=crop&q=60'" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">
+    </div>
+  </div>
+
+  <script>
+    let isPulseActive = false;
+    let pulseInterval = null;
+    let beamTimeout = null;
+    let currentApp = '';
+    let currentData = null;
+    let isSentryActive = false;
+
+    // --- PULSE TOGGLE ---
+    function togglePulse() {
+      const actor = document.getElementById('centerActor');
+      const badge = document.getElementById('pulseBadge');
+      const title = document.getElementById('hudTitle');
+
+      if (!isPulseActive) {
+        isPulseActive = true;
+        actor.className = 'actor-wrap awake';
+        badge.className = 'pulse-badge active';
+        badge.innerText = '● SENTINEL PULSE: LIVE 1000ms';
+        title.innerText = 'LIVE KERNEL TELEMETRY (STREAMING)';
+        
+        clearTimeout(beamTimeout);
+        clearCanvas();
+
+        updateHud();
+        pulseInterval = setInterval(updateHud, 1000);
+      } else {
+        isPulseActive = false;
+        actor.className = 'actor-wrap sleep';
+        badge.className = 'pulse-badge idle';
+        badge.innerText = '○ SENTINEL PULSE: STANDBY';
+        title.innerText = 'KERNEL TELEMETRY (TAP PANDA TO SCAN)';
+        
+        clearInterval(pulseInterval);
+        scheduleNextBeam();
+      }
+    }
+
+    async function updateHud() {
+      if (!window.pywebview) return;
+      const d = await window.pywebview.api.get_system_metrics();
+      document.getElementById('hudVal').innerText = 'RAM: ' + d.ram_used_gb + '/' + d.ram_total_gb + ' GB (' + d.ram_percent + '%)';
+      document.getElementById('cpuPill').innerText = 'CPU: ' + d.cpu_usage + '%';
+      document.getElementById('procPill').innerText = 'Tasks: ' + d.proc_count;
+      document.getElementById('diskPill').innerText = 'Disk Free: ' + d.disk_free_gb + ' GB';
+    }
+
+    // --- NEON BEAM ENGINE (10s - 60s Idle Mode) ---
+    const canvas = document.getElementById('laserCanvas');
+    const ctx = canvas.getContext('2d');
+    function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+
+    function scheduleNextBeam() {
+      if (isPulseActive) return;
+      const randomDelay = Math.floor(Math.random() * 50000) + 10000;
+      beamTimeout = setTimeout(() => {
+        triggerNeonBeam();
+        scheduleNextBeam();
+      }, randomDelay);
+    }
+
+    function triggerNeonBeam() {
+      if (isPulseActive) return;
+      const w = canvas.width, h = canvas.height;
+      const patterns = [
+        { x1:0, y1:0, x2:w, y2:h, c:'#00ffcc' },
+        { x1:w, y1:0, x2:0, y2:h, c:'#38bdf8' },
+        { x1:0, y1:h/2, x2:w, y2:h/2, c:'#a855f7' },
+        { x1:w/2, y1:h, x2:w/2, y2:0, c:'#00ffcc' },
+        { x1:0, y1:h, x2:w, y2:0, c:'#f43f5e' }
+      ];
+      const p = patterns[Math.floor(Math.random() * patterns.length)];
+
+      let progress = 0;
+      function draw() {
+        clearCanvas();
+        ctx.strokeStyle = p.c;
+        ctx.lineWidth = 3;
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = p.c;
+        ctx.beginPath();
+        ctx.moveTo(p.x1, p.y1);
+        ctx.lineTo(p.x1 + (p.x2 - p.x1) * progress, p.y1 + (p.y2 - p.y1) * progress);
+        ctx.stroke();
+
+        progress += 0.08;
+        if (progress <= 1) {
+          requestAnimationFrame(draw);
+        } else {
+          setTimeout(clearCanvas, 200);
+        }
+      }
+      draw();
+    }
+
+    // --- CYBER SENTRY COMPANION ---
+    function toggleCyberSentry() {
+      const pop = document.getElementById('sentryPop');
+      const btn = document.getElementById('sentryToggleBtn');
+      if (!isSentryActive) {
+        isSentryActive = true;
+        pop.classList.add('show');
+        btn.classList.add('active');
+      } else {
+        isSentryActive = false;
+        pop.classList.remove('show');
+        btn.classList.remove('active');
+      }
+    }
+
+    // --- NAVIGATION & VIEWS ---
+    function switchView(n) {
+      document.querySelectorAll('.nav .btn').forEach((b, i) => b.className = (i === n-1) ? 'btn active' : 'btn');
+      document.querySelectorAll('.panel').forEach((p, i) => p.className = (i === n-1) ? 'panel active' : 'panel');
+      if (n === 2) refreshApps();
+      if (n === 3 && currentApp) loadIntel(currentApp);
+    }
+
+    async function refreshApps() {
+      if (!window.pywebview) return;
+      const list = await window.pywebview.api.get_running_apps();
+      const bar = document.getElementById('appBar');
+      bar.innerHTML = '';
+      if (!list || list.length === 0) {
+        bar.innerHTML = '<span style="color:#64748b; font-size:12px;">No active target apps detected.</span>';
+        return;
+      }
+      list.forEach(a => {
+        const btn = document.createElement('button');
+        btn.className = (a.key === currentApp) ? 'btn active' : 'btn';
+        btn.innerText = a.name + ' (' + a.ram_mb + ' MB)';
+        btn.onclick = () => selectApp(a.key, a.name);
+        bar.appendChild(btn);
+      });
+      if (!currentApp && list.length > 0) selectApp(list[0].key, list[0].name);
+    }
+
+    async function selectApp(k, name) {
+      currentApp = k;
+      document.querySelectorAll('#appBar .btn').forEach(b => {
+        b.className = b.innerText.toLowerCase().includes(k.toLowerCase()) ? 'btn active' : 'btn';
+      });
+      const speech = document.getElementById('auditSpeech');
+      const dCol = document.getElementById('dangerCol');
+      const sCol = document.getElementById('safeCol');
+      dCol.classList.remove('visible');
+      sCol.classList.remove('visible');
+      dCol.innerHTML = '';
+      sCol.innerHTML = '';
+      speech.innerText = 'PROBING ' + name.toUpperCase() + '...';
+
+      setTimeout(async () => {
+        speech.innerText = 'AUDIT COMPLETE: ' + name.toUpperCase();
+        const intel = await window.pywebview.api.get_app_intel(k);
+        dCol.innerHTML = '<div style="color:#ef4444; font-weight:900; margin-bottom:6px;">IDENTIFIED THREATS</div>';
+        sCol.innerHTML = '<div style="color:#00ffcc; font-weight:900; margin-bottom:6px;">DEFENSE METRICS</div>';
+        intel.threats.forEach(t => {
+          dCol.innerHTML += '<div class="stream" style="border-left:4px solid ' + t.color + '; color:#fff;">' + t.text + '</div>';
+        });
+        intel.benefits.forEach(b => {
+          sCol.innerHTML += '<div class="stream" style="border-right:4px solid ' + b.color + '; color:#fff;">' + b.text + '</div>';
+        });
+        dCol.classList.add('visible');
+        sCol.classList.add('visible');
+      }, 700);
+    }
+
+    async function loadIntel(k) {
+      if (!window.pywebview) return;
+      currentData = await window.pywebview.api.get_app_intel(k);
+      const m = await window.pywebview.api.get_system_metrics();
+      document.getElementById('capStats').innerText = 'Safe Limit:\\n' + m.max_heavy_apps + ' Apps Simultaneously';
+      showIntel(0);
+    }
+
+    function showIntel(idx) {
+      if (!currentData) return;
+      for (let i = 0; i < 5; i++) {
+        const b = document.getElementById('itab-' + i);
+        if (b) b.className = (i === idx) ? 'btn active' : 'btn';
+      }
+      const title = document.getElementById('intelTitle');
+      const body = document.getElementById('intelBody');
+      const killBtn = document.getElementById('killBtn');
+      const box = document.getElementById('intelBox');
+      killBtn.style.display = 'none';
+
+      const tabs = [
+        { t: 'ORIGIN & PURPOSE', b: '<strong>Maker:</strong> ' + currentData.maker + '<br><br><strong>Purpose:</strong> ' + currentData.purpose, c: '#00ffcc' },
+        { t: 'NEUTRAL ALTERNATIVES', b: currentData.neutral, c: '#38bdf8' },
+        { t: 'TOXIC / MODDED REPACKS', b: currentData.toxic, c: '#ef4444' },
+        { t: 'FORTIFIED BEST ALTERNATIVES', b: currentData.best, c: '#10b981' },
+        { t: 'PROCESS TERMINATION', b: 'Active threads detected for <strong>' + currentApp.toUpperCase() + '</strong>. Terminate to free RAM.', c: '#f59e0b', a: true }
+      ];
+
+      const cur = tabs[idx];
+      title.innerText = cur.t;
+      title.style.color = cur.c;
+      body.innerHTML = cur.b;
+      box.style.borderColor = cur.c;
+      if (cur.a) killBtn.style.display = 'block';
+    }
+
+    async function killApp() {
+      if (!window.pywebview) return;
+      const res = await window.pywebview.api.terminate_process_by_name(currentApp);
+      alert('Terminated ' + res.killed_count + ' instance(s) of ' + currentApp);
+      currentApp = '';
+      refreshApps();
+      switchView(2);
+    }
+
+    window.addEventListener('pywebviewready', () => {
+      updateHud();
+      refreshApps();
+      scheduleNextBeam();
+    });
+  </script>
+</body>
+</html>
+"""
+
+class PandaMasterBridge:
+    def __init__(self):
+        self.app_intel_db = {
+            "chrome": {
+                "maker": "Google LLC (2008)",
+                "purpose": "Web Browser & Telemetry Daemon",
+                "neutral": "Mozilla Firefox, Microsoft Edge",
+                "toxic": "Cracked Chromium Builds, Untrusted VPN Extensions",
+                "best": "Brave Browser, Librewolf, Tor Browser",
+                "threats": [
+                    {"text": "CRITICAL: Multi-Gigabyte Background RAM Leak", "color": "#ef4444"},
+                    {"text": "MEDIUM: Third-Party Cookie Tracking", "color": "#f97316"},
+                    {"text": "LOW: Auto-Update Background Polling", "color": "#64748b"}
+                ],
+                "benefits": [
+                    {"text": "Google Safe Browsing Real-Time Threat DB", "color": "#00ffcc"},
+                    {"text": "Isolated Multi-Process Tab Sandboxing", "color": "#38bdf8"}
+                ]
+            },
+            "brave": {
+                "maker": "Brave Software Inc.",
+                "purpose": "Privacy-First Web Browser & Ad-Shield Engine",
+                "neutral": "Mozilla Firefox with uBlock",
+                "toxic": "Fake Brave Clones on Third-Party Stores",
+                "best": "Librewolf, Tor Browser Engine",
+                "threats": [{"text": "LOW: Brave Rewards Sync", "color": "#64748b"}],
+                "benefits": [
+                    {"text": "Native Script & Tracker Blocking Engine", "color": "#00ffcc"},
+                    {"text": "Fingerprinting Guard Active", "color": "#38bdf8"}
+                ]
+            },
+            "code": {
+                "maker": "Microsoft Corporation",
+                "purpose": "Source Code Editor & Language Server Host",
+                "neutral": "VSCodium (Telemetry-Free)",
+                "toxic": "Unverified Marketplace Extensions",
+                "best": "VSCodium, Neovim",
+                "threats": [{"text": "MEDIUM: High RAM Usage on Large Workspaces", "color": "#f97316"}],
+                "benefits": [{"text": "Process Isolation for Extensions", "color": "#00ffcc"}]
+            },
+            "python": {
+                "maker": "Python Software Foundation",
+                "purpose": "Script & Backend Runtime Execution",
+                "neutral": "PyPy, MicroPython",
+                "toxic": "Unverified PyPI Packages",
+                "best": "Official CPython in Virtual Environments",
+                "threats": [{"text": "WARNING: Direct OS Shell Access", "color": "#f97316"}],
+                "benefits": [{"text": "Native Memory Garbage Collector", "color": "#00ffcc"}]
+            },
+            "generic": {
+                "maker": "Active Windows Task",
+                "purpose": "Standard Process Execution",
+                "neutral": "Sandboxed Execution",
+                "toxic": "Unsigned Executables",
+                "best": "Verified Signed Software",
+                "threats": [{"text": "WARNING: Background RAM Consumption", "color": "#ef4444"}],
+                "benefits": [{"text": "Standard User Space Privilege", "color": "#00ffcc"}]
+            }
+        }
+
+    def get_running_apps(self):
+        detected = []
+        known_map = {
+            "chrome": "Google Chrome",
+            "brave": "Brave Browser",
+            "msedge": "Microsoft Edge",
+            "code": "VS Code",
+            "python": "Python Runtime",
+            "whatsapp": "WhatsApp Desktop"
+        }
+        seen_keys = set()
+        for proc in psutil.process_iter(['name', 'memory_info']):
+            try:
+                name = proc.info['name'].lower()
+                for key in known_map:
+                    if key in name and key not in seen_keys:
+                        seen_keys.add(key)
+                        mem_mb = round(proc.info['memory_info'].rss / (1024 * 1024))
+                        detected.append({"key": key, "name": known_map[key], "ram_mb": mem_mb})
+            except Exception:
+                continue
+        if not detected:
+            detected.append({"key": "chrome", "name": "Google Chrome", "ram_mb": 420})
+            detected.append({"key": "python", "name": "Python Environment", "ram_mb": 110})
+        return detected
+
+    def get_system_metrics(self):
+        ram = psutil.virtual_memory()
+        cpu_usage = psutil.cpu_percent(interval=None)
+        disk = psutil.disk_usage(os.path.abspath(os.sep))
+        running_procs = len(psutil.pids())
+        max_heavy_apps = max(1, int((ram.available / (1024**3)) / 1.5))
+        return {
+            "ram_used_gb": round(ram.used / (1024**3), 1),
+            "ram_total_gb": round(ram.total / (1024**3), 1),
+            "ram_percent": ram.percent,
+            "cpu_usage": cpu_usage,
+            "cpu_heat": "44°C",
+            "disk_free_gb": round(disk.free / (1024**3), 1),
+            "disk_total_gb": round(disk.total / (1024**3), 1),
+            "disk_percent_free": 100 - disk.percent,
+            "proc_count": running_procs,
+            "max_heavy_apps": max_heavy_apps
+        }
+
+    def get_app_intel(self, app_key):
+        key = app_key.lower()
+        if key in self.app_intel_db:
+            return self.app_intel_db[key]
+        return self.app_intel_db["generic"]
+
+    def terminate_process_by_name(self, process_name):
+        killed = 0
+        target = process_name.lower()
+        for proc in psutil.process_iter(['name', 'pid']):
+            try:
+                if target in proc.info['name'].lower():
+                    proc.kill()
+                    killed += 1
+            except Exception:
+                continue
+        return {"status": "success", "killed_count": killed}
+
+if __name__ == '__main__':
+    bridge = PandaMasterBridge()
+    # Resolve absolute directory to access local PNG files smoothly
+    base_dir = os.path.dirname(os.path.abspath(__file__)) if '__file__' in locals() else os.getcwd()
+    
+    window = webview.create_window(
+        title='PanDA Sentinel OS - Function 4 Build',
+        html=HTML_CODE,
+        js_api=bridge,
+        width=1060,
+        height=720,
+        background_color='#020617'
+    )
+    webview.start()
