@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PanDA - Function 3 Intel & Capacity Hub</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', 'Consolas', monospace;
+      user-select: none;
+    }
+
+    body {
+      background: radial-gradient(circle at center, #0b1329 0%, #030712 100%);
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .main-hub {
+      width: 960px;
+      height: 600px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(0, 255, 204, 0.3);
+      border-radius: 28px;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 10px 50px rgba(0, 255, 204, 0.15);
+      display: flex;
+      flex-direction: column;
+      padding: 24px 32px;
+      position: relative;
+    }
+
+    /* Top Capacity Gauge */
+    .capacity-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 16px;
+    }
+
+    .gauge-title {
+      font-size: 13px;
+      color: #00ffcc;
+      letter-spacing: 2px;
+      font-weight: 700;
+    }
+
+    .gauge-metric {
+      font-size: 20px;
+      font-weight: 800;
+      color: #ffffff;
+    }
+
+    .limit-badge {
+      background: rgba(0, 255, 204, 0.15);
+      border: 1px solid #00ffcc;
+      color: #00ffcc;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    /* Split Stage: Left Panda & Poses, Right 5-Options & Details */
+    .content-stage {
+      flex: 1;
+      display: flex;
+      gap: 30px;
+      margin-top: 20px;
+    }
+
+    .left-actor-zone {
+      width: 340px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .panda-box {
+      width: 150px;
+      height: 150px;
+      position: relative;
+      transition: all 0.5s ease;
+    }
+
+    .speech-bubble {
+      margin-top: 15px;
+      background: #00ffcc;
+      color: #030712;
+      padding: 8px 16px;
+      border-radius: 16px;
+      font-size: 13px;
+      font-weight: 800;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(0, 255, 204, 0.3);
+      max-width: 280px;
+    }
+
+    /* Right Interactive Zone */
+    .right-intel-zone {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .menu-tabs {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+
+    .tab-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #94a3b8;
+      padding: 8px 4px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.3s;
+    }
+
+    .tab-btn.active, .tab-btn:hover {
+      background: #00ffcc;
+      color: #030712;
+      border-color: #00ffcc;
+      box-shadow: 0 0 12px rgba(0, 255, 204, 0.4);
+    }
+
+    .intel-display-box {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .intel-heading {
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+      color: #00ffcc;
+    }
+
+    .intel-body {
+      font-size: 14px;
+      color: #cbd5e1;
+      line-height: 1.6;
+    }
+
+    /* Poses accessories */
+    .detective-glass {
+      display: none;
+      position: absolute;
+      top: 40px;
+      left: 30px;
+      width: 40px;
+      height: 20px;
+      border: 3px solid #ffcc00;
+      border-radius: 50%;
+      background: rgba(0, 255, 255, 0.3);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="main-hub">
+    <!-- Top System Multitask Metric -->
+    <div class="capacity-header">
+      <div>
+        <div class="gauge-title">PC MULTITASK CAPACITY</div>
+        <div class="gauge-metric">Safe Load: 4 Heavy Apps Max</div>
+      </div>
+      <div class="limit-badge">RAM 62% • STABLE</div>
+    </div>
+
+    <div class="content-stage">
+      <!-- Left Side: Panda with dynamic pose -->
+      <div class="left-actor-zone">
+        <div class="panda-box" id="pandaPose">
+          <div class="detective-glass" id="glass"></div>
+          <svg viewBox="0 0 100 100" width="100%" height="100%">
+            <circle cx="23" cy="23" r="14" fill="#1e222b"/>
+            <circle cx="77" cy="23" r="14" fill="#1e222b"/>
+            <circle cx="23" cy="23" r="7" fill="#ff7597"/>
+            <circle cx="77" cy="23" r="7" fill="#ff7597"/>
+            <ellipse cx="50" cy="52" rx="40" ry="36" fill="#ffffff"/>
+            <ellipse cx="33" cy="48" rx="12" ry="15" fill="#1e222b" transform="rotate(-15 33 48)"/>
+            <ellipse cx="67" cy="48" rx="12" ry="15" fill="#1e222b" transform="rotate(15 67 48)"/>
+            <circle cx="35" cy="46" r="4.5" fill="#ffffff"/>
+            <circle cx="65" cy="46" r="4.5" fill="#ffffff"/>
+            <polygon points="46,58 54,58 50,63" fill="#1e222b"/>
+            <path d="M 45 66 Q 50 71 55 66" stroke="#1e222b" stroke-width="2.5" fill="transparent" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="speech-bubble" id="pandaSpeech">Select an intel option to inspect!</div>
+      </div>
+
+      <!-- Right Side: 5 Options & Dynamic Text -->
+      <div class="right-intel-zone">
+        <div class="menu-tabs">
+          <button class="tab-btn active" onclick="loadIntel(0)">1. History</button>
+          <button class="tab-btn" onclick="loadIntel(1)">2. Neutral Alt</button>
+          <button class="tab-btn" onclick="loadIntel(2)">3. Toxic Alt</button>
+          <button class="tab-btn" onclick="loadIntel(3)">4. Best Alt</button>
+          <button class="tab-btn" onclick="loadIntel(4)">5. Usage Alert</button>
+        </div>
+
+        <div class="intel-display-box">
+          <div class="intel-heading" id="intelTitle">ORIGIN & CREATOR DETAILS</div>
+          <div class="intel-body" id="intelDesc">Loading intelligence report...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const intelData = [
+      {
+        title: "ORIGIN & PURPOSE (HISTORY)",
+        desc: "Created by Google in 2008. Designed as a lightweight, sandboxed web browser to organize world information, but heavily relies on user data monetization.",
+        speech: "Investigating the maker roots...",
+        poseTransform: "scale(1.05) rotate(-3deg)",
+        glass: true,
+        titleColor: "#00ffcc"
+      },
+      {
+        title: "NEUTRAL ALTERNATIVES",
+        desc: "Mozilla Firefox / Microsoft Edge: Provides similar multi-tab performance with standard corporate privacy shields.",
+        speech: "Here are some fair balanced options.",
+        poseTransform: "scale(1) rotate(0deg)",
+        glass: false,
+        titleColor: "#38bdf8"
+      },
+      {
+        title: "⚠️ DANGEROUS / TOXIC ALTERNATIVES",
+        desc: "Cracked / Modded Browsers & Proxy Addons: These inject hidden crypto-miners and log keystrokes directly.",
+        speech: "Stay away from these fake traps!",
+        poseTransform: "scale(1.1) rotate(6deg)",
+        glass: false,
+        titleColor: "#ef4444"
+      },
+      {
+        title: "🛡️ BEST PRIVACY ALTERNATIVES",
+        desc: "Brave Browser / Librewolf / Tor: Zero cross-site trackers, native ad-blocking, and no personal telemetry collected.",
+        speech: "Top tier security choices!",
+        poseTransform: "scale(1.05) translateY(-5px)",
+        glass: false,
+        titleColor: "#10b981"
+      },
+      {
+        title: "⏱️ ACTIVE USAGE & HEALTH CHECK",
+        desc: "Running for: 3 Hours 42 Mins continuously. Recommendation: High RAM footprint detected — Restart application to flush cache.",
+        speech: "You've been on this too long, dude!",
+        poseTransform: "scale(0.95) rotate(-5deg)",
+        glass: false,
+        titleColor: "#f59e0b"
+      }
+    ];
+
+    function loadIntel(index) {
+      document.querySelectorAll('.tab-btn').forEach((b, i) => {
+        b.className = i === index ? 'tab-btn active' : 'tab-btn';
+      });
+
+      const item = intelData[index];
+      const titleEl = document.getElementById("intelTitle");
+      const descEl = document.getElementById("intelDesc");
+      const speechEl = document.getElementById("pandaSpeech");
+      const pandaEl = document.getElementById("pandaPose");
+      const glassEl = document.getElementById("glass");
+
+      titleEl.innerText = item.title;
+      titleEl.style.color = item.titleColor;
+      descEl.innerText = item.desc;
+      speechEl.innerText = item.speech;
+      pandaEl.style.transform = item.poseTransform;
+      glassEl.style.display = item.glass ? "block" : "none";
+    }
+
+    window.onload = () => loadIntel(0);
+  </script>
+</body>
+</html>
