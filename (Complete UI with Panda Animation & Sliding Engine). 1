@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PanDA HUD Overlay</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Roboto, sans-serif;
+    }
+
+    body {
+      background: rgba(10, 15, 29, 0.92);
+      color: #fff;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      height: 100vh;
+      padding-top: 25px;
+    }
+
+    /* Floating Top HUD Bar */
+    .hud-container {
+      width: 850px;
+      height: 130px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(0, 255, 204, 0.3);
+      backdrop-filter: blur(16px);
+      border-radius: 65px;
+      box-shadow: 0 10px 40px rgba(0, 255, 204, 0.15), inset 0 0 15px rgba(0, 255, 204, 0.05);
+      display: flex;
+      align-items: center;
+      position: relative;
+      padding: 10px 30px;
+      transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    /* Cute SVG Panda Base & Motion */
+    .panda-character {
+      width: 90px;
+      height: 90px;
+      position: absolute;
+      transition: all 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      z-index: 10;
+      filter: drop-shadow(0 5px 15px rgba(0,0,0,0.5));
+    }
+
+    .pos-left {
+      left: 30px;
+      transform: scaleX(1);
+    }
+
+    .pos-right {
+      left: 730px;
+      transform: scaleX(-1); /* Face flips direction */
+    }
+
+    /* Info Content Box */
+    .info-display {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      transition: all 0.5s ease;
+    }
+
+    .shift-right {
+      padding-left: 110px;
+      text-align: left;
+    }
+
+    .shift-left {
+      padding-right: 110px;
+      text-align: right;
+    }
+
+    .hud-title {
+      font-size: 13px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #00ffcc;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .hud-stat {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: #ffffff;
+      text-shadow: 0 0 10px rgba(0, 255, 204, 0.5);
+    }
+
+    .hud-desc {
+      font-size: 12px;
+      color: #8fa0be;
+    }
+
+    /* Panda Speech Bubble */
+    .speech-bubble {
+      position: absolute;
+      top: -35px;
+      background: #00ffcc;
+      color: #0d131a;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 4px 12px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 255, 204, 0.4);
+      white-space: nowrap;
+      transition: all 0.3s ease;
+    }
+
+    /* Animation Keyframes */
+    @keyframes earWiggle {
+      0%, 100% { transform: rotate(0deg); }
+      50% { transform: rotate(8deg); }
+    }
+
+    .ear-left { animation: earWiggle 2s infinite ease-in-out; transform-origin: bottom right; }
+    .ear-right { animation: earWiggle 2s infinite ease-in-out reverse; transform-origin: bottom left; }
+  </style>
+</head>
+<body>
+
+  <div class="hud-container" id="hudContainer">
+    
+    <!-- Cute Vector Panda -->
+    <div class="panda-character pos-left" id="pandaActor">
+      <div class="speech-bubble" id="speechText">Checking RAM...</div>
+      <svg viewBox="0 0 100 100" width="100%" height="100%">
+        <!-- Ears -->
+        <circle class="ear-left" cx="23" cy="23" r="14" fill="#1e222b"/>
+        <circle class="ear-right" cx="77" cy="23" r="14" fill="#1e222b"/>
+        <circle cx="23" cy="23" r="7" fill="#ff7597"/>
+        <circle cx="77" cy="23" r="7" fill="#ff7597"/>
+        <!-- Face Body -->
+        <ellipse cx="50" cy="52" rx="40" ry="36" fill="#ffffff"/>
+        <!-- Eye Patches -->
+        <ellipse cx="33" cy="48" rx="12" ry="15" fill="#1e222b" transform="rotate(-15 33 48)"/>
+        <ellipse cx="67" cy="48" rx="12" ry="15" fill="#1e222b" transform="rotate(15 67 48)"/>
+        <!-- Eyes (Shiny) -->
+        <circle cx="35" cy="46" r="4.5" fill="#ffffff"/>
+        <circle cx="33" cy="48" r="2" fill="#00ffcc"/>
+        <circle cx="65" cy="46" r="4.5" fill="#ffffff"/>
+        <circle cx="67" cy="48" r="2" fill="#00ffcc"/>
+        <!-- Blush -->
+        <ellipse cx="22" cy="62" rx="6" ry="4" fill="#ff99b6" opacity="0.7"/>
+        <ellipse cx="78" cy="62" rx="6" ry="4" fill="#ff99b6" opacity="0.7"/>
+        <!-- Cute Nose & Mouth -->
+        <polygon points="46,58 54,58 50,63" fill="#1e222b"/>
+        <path d="M 45 66 Q 50 71 55 66" stroke="#1e222b" stroke-width="2.5" fill="transparent" stroke-linecap="round"/>
+      </svg>
+    </div>
+
+    <!-- Live Telemetry Content Area -->
+    <div class="info-display shift-right" id="infoBox">
+      <span class="hud-title" id="cardCategory">SYSTEM RAM USAGE</span>
+      <span class="hud-stat" id="cardValue">5.2 / 16.0 GB (32%)</span>
+      <span class="hud-desc" id="cardSub">Status: Normal • Low Load</span>
+    </div>
+
+  </div>
+
+  <script>
+    // System Data Sequence (Fetched from Python Backend)
+    const telemetrySteps = [
+      {
+        category: "SYSTEM RAM USAGE",
+        value: "5.2 / 16.0 GB (32%)",
+        sub: "Memory Load: Optimal & Cool",
+        speech: "RAM is super clean!",
+        position: "pos-left",
+        shift: "shift-right"
+      },
+      {
+        category: "CPU TEMPERATURE & HEAT",
+        value: "43°C • Low Thermal",
+        sub: "Fan Speed: 1400 RPM (Silent)",
+        speech: "CPU isn't hot at all!",
+        position: "pos-right",
+        shift: "shift-left"
+      },
+      {
+        category: "NVMe STORAGE CAPACITY",
+        value: "384 GB Free / 512 GB",
+        sub: "Available: 75% Space remaining",
+        speech: "Lots of free disk space!",
+        position: "pos-left",
+        shift: "shift-right"
+      },
+      {
+        category: "PanDA SECURITY SHIELD",
+        value: "96% Safe & Protected",
+        sub: "0 Background Leaks • Ports Secure",
+        speech: "All systems locked & safe!",
+        position: "pos-right",
+        shift: "shift-left"
+      }
+    ];
+
+    let currentStep = 0;
+    const panda = document.getElementById("pandaActor");
+    const infoBox = document.getElementById("infoBox");
+    const speech = document.getElementById("speechText");
+    const title = document.getElementById("cardCategory");
+    const stat = document.getElementById("cardValue");
+    const sub = document.getElementById("cardSub");
+
+    function renderNextStep() {
+      if (currentStep >= telemetrySteps.length) {
+        // Complete Sequence -> Auto Fade Out
+        speech.innerText = "See you soon!";
+        setTimeout(() => {
+          document.getElementById("hudContainer").style.transform = "translateY(-180px)";
+        }, 1200);
+        return;
+      }
+
+      const step = telemetrySteps[currentStep];
+
+      // Smooth Switch: Slide Panda & Flip Info Alignment
+      panda.className = "panda-character " + step.position;
+      infoBox.className = "info-display " + step.shift;
+      
+      speech.innerText = step.speech;
+      title.innerText = step.category;
+      stat.innerText = step.value;
+      sub.innerText = step.sub;
+
+      currentStep++;
+      setTimeout(renderNextStep, 3500); // 3.5 Seconds interval per slide
+    }
+
+    // Launch sequence 500ms after load
+    window.onload = () => {
+      setTimeout(renderNextStep, 500);
+    };
+  </script>
+</body>
+</html>
