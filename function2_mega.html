@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PanDA - Function 2 Mega Engine</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', 'Consolas', monospace;
+      user-select: none;
+    }
+
+    body {
+      background: radial-gradient(circle at center, #0f172a 0%, #020617 100%);
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* Top Selector for Testing Apps */
+    .app-selector {
+      position: absolute;
+      top: 20px;
+      display: flex;
+      gap: 15px;
+      z-index: 100;
+      background: rgba(255,255,255,0.05);
+      padding: 8px 16px;
+      border-radius: 30px;
+      border: 1px solid rgba(0,255,204,0.3);
+      backdrop-filter: blur(10px);
+    }
+
+    .app-btn {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #94a3b8;
+      padding: 6px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+
+    .app-btn.active, .app-btn:hover {
+      background: #00ffcc;
+      color: #020617;
+      border-color: #00ffcc;
+      box-shadow: 0 0 15px rgba(0,255,204,0.4);
+    }
+
+    /* Main Stage */
+    .stage {
+      width: 900px;
+      height: 520px;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* ================= PANDA STYLES ================= */
+    .panda-box {
+      width: 130px;
+      height: 130px;
+      position: absolute;
+      z-index: 20;
+      transition: all 0.7s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    }
+
+    .speech-bubble {
+      position: absolute;
+      top: -45px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #00ffcc;
+      color: #020617;
+      padding: 6px 14px;
+      border-radius: 14px;
+      font-size: 13px;
+      font-weight: 800;
+      white-space: nowrap;
+      box-shadow: 0 4px 15px rgba(0,255,204,0.3);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .speech-bubble.show { opacity: 1; }
+
+    /* Tools & Items in Panda Hand/Head */
+    .screwdriver {
+      position: absolute;
+      right: -20px;
+      top: 30px;
+      width: 35px;
+      height: 10px;
+      background: #ffaa00;
+      border-radius: 2px;
+      transform: rotate(45deg);
+      box-shadow: 0 0 10px #ffaa00;
+      display: none;
+    }
+
+    .screwdriver::after {
+      content: '';
+      position: absolute;
+      right: -15px;
+      top: 3px;
+      width: 15px;
+      height: 4px;
+      background: #e2e8f0;
+    }
+
+    /* ================= INSTAGRAM MODULE ================= */
+    .insta-cards-container {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      position: absolute;
+      padding: 0 40px;
+      opacity: 0;
+      transition: opacity 0.6s ease;
+    }
+
+    .cards-column {
+      width: 340px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* Left: Dark Red to Light Red */
+    .danger-card-1 { background: linear-gradient(135deg, #7f1d1d, #991b1b); border-left: 4px solid #ef4444; }
+    .danger-card-2 { background: linear-gradient(135deg, #991b1b, #b91c1c); border-left: 4px solid #f87171; }
+    .danger-card-3 { background: linear-gradient(135deg, #450a0a, #7f1d1d); border-left: 4px solid #fca5a5; }
+
+    /* Right: Dark Blue to Light Blue */
+    .safe-card-1 { background: linear-gradient(135deg, #1e3a8a, #1d4ed8); border-right: 4px solid #3b82f6; text-align: right; }
+    .safe-card-2 { background: linear-gradient(135deg, #1d4ed8, #2563eb); border-right: 4px solid #60a5fa; text-align: right; }
+    .safe-card-3 { background: linear-gradient(135deg, #0f172a, #1e3a8a); border-right: 4px solid #93c5fd; text-align: right; }
+
+    .audit-card {
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    }
+
+    /* ================= FACEBOOK MODULE ================= */
+    .fb-stage {
+      display: none;
+      width: 100%;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 30px;
+    }
+
+    .fb-device {
+      width: 320px;
+      height: 240px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .fb-phone { border-top: 4px solid #ef4444; }
+    .fb-pc { border-top: 4px solid #00ffcc; }
+
+    .fb-logo-char {
+      width: 80px;
+      height: 80px;
+      background: #1877f2;
+      color: white;
+      font-size: 60px;
+      font-weight: bold;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 30px rgba(24, 119, 242, 0.6);
+      animation: floatChar 2.5s infinite ease-in-out;
+    }
+
+    @keyframes floatChar {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-10px) rotate(4deg); }
+    }
+
+    /* ================= YOUTUBE / UNIVERSAL DANGER STREAM ================= */
+    .danger-hero-text {
+      position: absolute;
+      font-size: 40px;
+      font-weight: 900;
+      color: #ef4444;
+      text-shadow: 0 0 20px rgba(239, 68, 68, 0.8);
+      opacity: 0;
+      transform: scale(0.2);
+      transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      border-left: 5px solid #00ffcc;
+      padding: 10px 20px;
+      background: rgba(0,0,0,0.6);
+    }
+
+    .stream-box {
+      position: absolute;
+      top: 260px;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      min-height: 40px;
+      text-align: center;
+    }
+
+    /* App Logo Crunch Target */
+    .target-logo {
+      width: 100px;
+      height: 100px;
+      border-radius: 24px;
+      background: #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 45px;
+      color: #020617;
+      font-weight: bold;
+      position: absolute;
+      transition: all 0.5s ease;
+      box-shadow: 0 0 30px rgba(255,255,255,0.2);
+      z-index: 15;
+    }
+
+    .crunched {
+      transform: scale(0.6, 0.25) rotate(-15deg) !important;
+      filter: contrast(200%) grayscale(80%);
+      box-shadow: 0 0 15px rgba(239, 68, 68, 0.8);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Tab Switching -->
+  <div class="app-selector">
+    <button class="app-btn active" onclick="runInstagram()">Instagram</button>
+    <button class="app-btn" onclick="runFacebook()">Facebook</button>
+    <button class="app-btn" onclick="runYouTube()">YouTube</button>
+    <button class="app-btn" onclick="runUniversalChrome()">Chrome (Universal)</button>
+  </div>
+
+  <div class="stage" id="stage">
+    
+    <!-- Central PanDA Actor -->
+    <div class="panda-box" id="panda">
+      <div class="speech-bubble" id="speech">Hey! Let's check Instagram.</div>
+      <div class="screwdriver" id="tool"></div>
+      <svg viewBox="0 0 100 100" width="100%" height="100%" id="pandaSvg">
+        <!-- Ears -->
+        <circle cx="23" cy="23" r="14" fill="#1e222b"/>
+        <circle cx="77" cy="23" r="14" fill="#1e222b"/>
+        <circle cx="23" cy="23" r="7" fill="#ff7597"/>
+        <circle cx="77" cy="23" r="7" fill="#ff7597"/>
+        <!-- Face Body -->
+        <ellipse cx="50" cy="52" rx="40" ry="36" fill="#ffffff"/>
+        <!-- Eye Patches -->
+        <ellipse cx="33" cy="48" rx="12" ry="15" fill="#1e222b" transform="rotate(-15 33 48)"/>
+        <ellipse cx="67" cy="48" rx="12" ry="15" fill="#1e222b" transform="rotate(15 67 48)"/>
+        <!-- Eyes (Winking Setup) -->
+        <circle id="leftEye" cx="35" cy="46" r="4.5" fill="#ffffff"/>
+        <path id="rightWink" d="M 60 48 Q 67 42 74 48" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" style="display:none;"/>
+        <circle id="rightEye" cx="65" cy="46" r="4.5" fill="#ffffff"/>
+        <!-- Blush -->
+        <ellipse cx="22" cy="62" rx="6" ry="4" fill="#ff99b6" opacity="0.7"/>
+        <ellipse cx="78" cy="62" rx="6" ry="4" fill="#ff99b6" opacity="0.7"/>
+        <!-- Nose & Mouth -->
+        <polygon points="46,58 54,58 50,63" fill="#1e222b"/>
+        <path d="M 45 66 Q 50 71 55 66" stroke="#1e222b" stroke-width="2.5" fill="transparent" stroke-linecap="round"/>
+      </svg>
+    </div>
+
+    <!-- Instagram Cards -->
+    <div class="insta-cards-container" id="instaCards">
+      <div class="cards-column">
+        <div class="audit-card danger-card-1">🚨 Background Camera & Mic Polling</div>
+        <div class="audit-card danger-card-2">⚠️ Precise Geolocation Tracking</div>
+        <div class="audit-card danger-card-3">📉 Cross-App Ad Broker Sharing</div>
+      </div>
+      <div class="cards-column">
+        <div class="audit-card safe-card-1">🛡️ End-to-End Encrypted DMs</div>
+        <div class="audit-card safe-card-2">🔒 Two-Factor Auth Protection</div>
+        <div class="audit-card safe-card-3">👁️ Close Friends Privacy Shield</div>
+      </div>
+    </div>
+
+    <!-- Facebook Split View -->
+    <div class="fb-stage" id="fbStage">
+      <div class="fb-device fb-phone">
+        <span style="color:#ef4444; font-weight:800; margin-bottom:8px;">📱 PHONE: DANGER</span>
+        <div id="fbPhoneText" style="font-size:13px; color:#cbd5e1; line-height:1.6;"></div>
+      </div>
+      <div class="fb-logo-char">f</div>
+      <div class="fb-device fb-pc">
+        <span style="color:#00ffcc; font-weight:800; margin-bottom:8px;">💻 PC: FOR YOUR SECURITY DUDE</span>
+        <div id="fbPcText" style="font-size:13px; color:#cbd5e1; line-height:1.6;"></div>
+      </div>
+    </div>
+
+    <!-- YouTube / Universal Danger Banner -->
+    <div class="danger-hero-text" id="dangerHero">DANGER DETECTED</div>
+
+    <!-- Universal Target App Logo -->
+    <div class="target-logo" id="targetLogo" style="display:none;">🌐</div>
+
+    <!-- Streaming Text Area -->
+    <div class="stream-box" id="streamBox"></div>
+
+  </div>
+
+  <script>
+    const panda = document.getElementById("panda");
+    const speech = document.getElementById("speech");
+    const tool = document.getElementById("tool");
+    const rightEye = document.getElementById("rightEye");
+    const rightWink = document.getElementById("rightWink");
+    const instaCards = document.getElementById("instaCards");
+    const fbStage = document.getElementById("fbStage");
+    const dangerHero = document.getElementById("dangerHero");
+    const targetLogo = document.getElementById("targetLogo");
+    const streamBox = document.getElementById("streamBox");
+
+    function resetStage() {
+      panda.style.display = "block";
+      panda.style.transform = "translate(0, 0)";
+      speech.className = "speech-bubble";
+      tool.style.display = "none";
+      rightEye.style.display = "block";
+      rightWink.style.display = "none";
+      instaCards.style.opacity = "0";
+      fbStage.style.display = "none";
+      dangerHero.style.opacity = "0";
+      dangerHero.style.transform = "scale(0.2)";
+      targetLogo.style.display = "none";
+      targetLogo.className = "target-logo";
+      streamBox.innerHTML = "";
+    }
+
+    // Set active button UI
+    function setActiveBtn(index) {
+      document.querySelectorAll('.app-btn').forEach((b, i) => {
+        b.className = i === index ? 'app-btn active' : 'app-btn';
+      });
+    }
+
+    /* 1. INSTAGRAM FLOW */
+    function runInstagram() {
+      resetStage();
+      setActiveBtn(0);
+      speech.innerText = "Scanning Instagram App...";
+      speech.classList.add("show");
+
+      setTimeout(() => {
+        // Wink Action
+        rightEye.style.display = "none";
+        rightWink.style.display = "block";
+        speech.innerText = "Look at both sides!";
+        instaCards.style.opacity = "1";
+      }, 1200);
+    }
+
+    /* 2. FACEBOOK FLOW */
+    function runFacebook() {
+      resetStage();
+      setActiveBtn(1);
+      panda.style.display = "none";
+      fbStage.style.display = "flex";
+
+      typeWriter("fbPhoneText", "• Real-time contact syncing\n• Off-Facebook activity tracking\n• Background audio listener detected", 30);
+      typeWriter("fbPcText", "• Browser fingerprinting locked\n• Cookie isolation enabled\n• Dude, play it safe & secure!", 30);
+    }
+
+    function typeWriter(elementId, text, speed) {
+      const el = document.getElementById(elementId);
+      el.innerHTML = "";
+      let i = 0;
+      const timer = setInterval(() => {
+        if (i < text.length) {
+          el.innerHTML += text.charAt(i) === '\n' ? '<br/>' : text.charAt(i);
+          i++;
+        } else {
+          clearInterval(timer);
+        }
+      }, speed);
+    }
+
+    /* 3. YOUTUBE FLOW */
+    function runYouTube() {
+      resetStage();
+      setActiveBtn(2);
+      speech.innerText = "Look up there!";
+      speech.classList.add("show");
+
+      setTimeout(() => {
+        // Panda Point & Fade
+        panda.style.transform = "translateY(-40px)";
+        setTimeout(() => {
+          panda.style.display = "none";
+          // 1/5th Danger Scale
+          dangerHero.style.opacity = "1";
+          dangerHero.style.transform = "scale(1)";
+
+          setTimeout(() => {
+            dangerHero.style.opacity = "0";
+            // Word Stream
+            streamWords(["Tracking Watch History", "Aggressive Ad Profiling", "Autoplay Bandwidth Leak"], "#ef4444", () => {
+              // Part 2: Logo Toss & Atomic Shrink
+              targetLogo.innerText = "▶";
+              targetLogo.style.background = "#ff0000";
+              targetLogo.style.color = "#fff";
+              targetLogo.style.display = "flex";
+              targetLogo.style.transform = "scale(1)";
+              
+              setTimeout(() => {
+                targetLogo.style.transform = "scale(0.05) translateY(-200px)";
+                targetLogo.style.boxShadow = "0 0 40px #00ffcc";
+                setTimeout(() => {
+                  targetLogo.style.display = "none";
+                  streamWords(["2FA Shield Protected", "Encrypted Google Auth", "Restricted Safety Mode"], "#00ffcc", null);
+                }, 800);
+              }, 1000);
+            });
+          }, 1500);
+        }, 800);
+      }, 1000);
+    }
+
+    /* 4. CHROME / UNIVERSAL APP FLOW */
+    function runUniversalChrome() {
+      resetStage();
+      setActiveBtn(3);
+      targetLogo.innerText = "🌐";
+      targetLogo.style.background = "#fff";
+      targetLogo.style.display = "flex";
+      targetLogo.style.transform = "scale(1) translateY(-60px)";
+
+      speech.innerText = "Wait! Let me inspect Chrome...";
+      speech.classList.add("show");
+
+      // Step 1: Crunch Logo
+      setTimeout(() => {
+        targetLogo.classList.add("crunched");
+        speech.innerText = "It has dangers like this!";
+        
+        // Dynamic Threat Colors (Dark Red to Muted Gray)
+        const threats = [
+          { text: "CRITICAL: RAM Overconsumption Leak", color: "#b91c1c" },
+          { text: "MEDIUM: Third-Party Cookie Tracking", color: "#f97316" },
+          { text: "LOW: Background Auto-Update Daemon", color: "#64748b" }
+        ];
+
+        streamComplex(threats, () => {
+          // Step 2: Panda Repair with Screwdriver
+          tool.style.display = "block";
+          speech.innerText = "Sorry, but it has some benefits too!";
+          targetLogo.classList.remove("crunched");
+          targetLogo.style.transform = "scale(0.8) translateY(-140px)"; // Placed on Panda's head
+          
+          const benefits = [
+            { text: "Google Safe Browsing Real-time Shield", color: "#00ffcc" },
+            { text: "Automatic Phishing & Malicious Block", color: "#38bdf8" },
+            { text: "Isolated Tab Sandbox Architecture", color: "#818cf8" }
+          ];
+          streamComplex(benefits, null);
+        });
+      }, 1500);
+    }
+
+    function streamWords(phrases, color, callback) {
+      let index = 0;
+      function next() {
+        if (index < phrases.length) {
+          streamBox.style.color = color;
+          streamBox.style.textShadow = `0 0 15px ${color}`;
+          streamBox.innerHTML = phrases[index];
+          index++;
+          setTimeout(next, 1200);
+        } else {
+          streamBox.innerHTML = "";
+          if (callback) callback();
+        }
+      }
+      next();
+    }
+
+    function streamComplex(items, callback) {
+      let index = 0;
+      function next() {
+        if (index < items.length) {
+          streamBox.style.color = items[index].color;
+          streamBox.style.textShadow = `0 0 15px ${items[index].color}`;
+          streamBox.innerHTML = items[index].text;
+          index++;
+          setTimeout(next, 1400);
+        } else {
+          streamBox.innerHTML = "";
+          if (callback) callback();
+        }
+      }
+      next();
+    }
+
+    // Default Startup
+    window.onload = runInstagram;
+  </script>
+</body>
+</html>
