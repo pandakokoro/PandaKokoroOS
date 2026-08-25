@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Panda OS - RAM Dominance Engine</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Consolas','Segoe UI',monospace; user-select:none; }
+  body { background:#02040a; color:#f8fafc; height:100vh; width:100vw; overflow:hidden; position:relative; display:flex; flex-direction:column; }
+
+  #particleCanvas { position:absolute; top:0; left:0; width:100%; height:100%; z-index:1; pointer-events:none; }
+  #shatterCanvas { position:absolute; top:0; left:0; width:100%; height:100%; z-index:12; pointer-events:none; }
+  #pulseCanvas { position:absolute; top:0; left:0; width:100%; height:100%; z-index:40; pointer-events:none; }
+  #lightBurstCanvas { position:absolute; top:0; left:0; width:100%; height:100%; z-index:50; pointer-events:none; }
+
+  /* CYBER TERMINAL CACHE PURGE STREAM (LEFT SIDE) */
+  #cachePurgeStream {
+    position: absolute; left: 40px; top: 120px; width: 420px; height: 360px;
+    z-index: 60; pointer-events: none; display: none; flex-direction: column; gap: 6px;
+    font-family: 'Consolas', monospace; font-size: 11px; font-weight: 800;
+  }
+  #cachePurgeStream.active { display: flex !important; }
+  .purge-terminal-line {
+    color: #00ffcc; text-shadow: 0 0 8px rgba(0,255,204,0.6);
+    background: rgba(2, 6, 23, 0.75); border-left: 3px solid #00ffcc;
+    padding: 6px 10px; border-radius: 4px; backdrop-filter: blur(8px);
+    opacity: 0; transform: translateX(-20px);
+    animation: terminalLineSlide 0.3s forwards ease-out;
+  }
+  @keyframes terminalLineSlide {
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  /* DYNAMIC INACTIVE FILE AUDIT FEED */
+  #easterEggStream {
+    position: absolute; left: 50px; top: 140px; width: 460px; height: 260px;
+    z-index: 120; pointer-events: none; display: none; flex-direction: column; gap: 8px;
+  }
+  #easterEggStream.active { display: flex !important; }
+  .easter-egg-line {
+    color: #00ffcc; text-shadow: 0 0 12px rgba(0,255,204,0.9);
+    background: rgba(2, 6, 23, 0.9); border-left: 3px solid #00f0ff;
+    padding: 10px 14px; border-radius: 8px; backdrop-filter: blur(10px);
+    font-size: 11px; line-height: 1.4;
+    opacity: 0; transform: translateX(-25px);
+    animation: terminalLineSlide 0.35s forwards ease-out;
+  }
+
+  /* [ ESC ] EXIT HINT BUTTON */
+  #escExitBtn {
+    position: fixed; top: 20px; right: 25px; z-index: 150;
+    background: rgba(0, 240, 255, 0.2); border: 1.5px solid #00f0ff; color: #00f0ff;
+    padding: 6px 14px; border-radius: 8px; font-weight: 900; font-size: 12px;
+    cursor: pointer; display: none; box-shadow: 0 0 18px rgba(0,240,255,0.4);
+    transition: 0.3s;
+  }
+  #escExitBtn:hover { background: #00f0ff; color: #020417; box-shadow: 0 0 28px #00f0ff; }
+  #escExitBtn.active { display: block !important; }
+
+  .top-bar {
+    z-index:30; display:flex; justify-content:space-between; align-items:center;
+    padding:12px 30px; position:relative; height:65px; min-height:65px;
+    background: linear-gradient(90deg, #02040a 0%, #030712 50%, rgba(245, 158, 11, 0.15) 100%);
+    border-bottom: 3px double #00ffcc;
+    box-shadow: 0 4px 18px rgba(0, 255, 204, 0.4);
+    transition: opacity 0.6s ease, transform 0.6s ease, background 0.6s ease;
+  }
+  .top-bar.dissolved { opacity: 0 !important; pointer-events: none; transform: translateY(-20px); }
+
+  .brand-group {
+    display:flex; align-items:center; gap:14px; cursor:pointer; padding:4px 8px; border-radius:10px; transition:0.3s;
+    position:relative;
+  }
+  .brand-group:hover { background:rgba(0,255,204,0.08); }
+
+  .brand-logo {
+    width:42px; height:42px; border-radius:6px; object-fit:contain;
+    filter:drop-shadow(0 0 8px #000);
+    transition: all 0.9s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .brand-logo.aligned-dark-orbit {
+    position: fixed !important; left: 105px !important; top: 145px !important;
+    transform: scale(1.65); z-index: 100;
+    filter: drop-shadow(0 0 25px #00f0ff) drop-shadow(0 0 45px rgba(0,240,255,0.8));
+    animation: auraPulse 2.5s infinite ease-in-out alternate;
+  }
+
+  .title-chars-wrap { display:flex; }
+  .p-char {
+    display:inline-block; font-size:20px; font-weight:900; letter-spacing:2px;
+    color:#00ffcc; text-shadow:0 0 10px #00ffcc;
+    transition: opacity 0.25s ease, transform 0.25s ease, filter 0.25s ease;
+  }
+  .p-char.erased { opacity: 0 !important; transform: translateY(-4px) scale(0.7); filter: blur(4px); }
+
+  .cosmic-form-badge {
+    position:absolute; left:calc(50% + 95px); top:50%; transform:translateY(-50%);
+    font-size:10px; font-weight:900; letter-spacing:1.5px; color:#00f0ff;
+    padding:4px 10px; border-radius:12px; border:1px solid #00f0ff;
+    background:rgba(0,240,255,0.12); box-shadow:0 0 10px rgba(0,240,255,0.3);
+    opacity:0; pointer-events:none; transition: opacity 0.5s ease; z-index:36;
+  }
+  .cosmic-form-badge.active { opacity:1 !important; }
+  
+  .aegis-center-badge {
+    position:absolute; left:50%; top:50%; transform:translate(-50%, -50%);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; z-index:35; padding:6px 16px; border-radius:20px;
+    border:1.5px solid rgba(0,240,255,0.4); background:rgba(2,6,23,0.7);
+    box-shadow:0 0 15px rgba(0,240,255,0.2);
+    transition: width 0.6s cubic-bezier(0.25, 1, 0.5, 1), height 0.6s ease, border-radius 0.6s ease, padding 0.6s ease, transform 0.3s ease, border-color 0.5s ease;
+    animation: aegisFloat 3s infinite ease-in-out alternate;
+  }
+  .aegis-center-badge.collapsed-orb {
+    width: 32px !important; height: 32px !important;
+    border-radius: 50% !important; padding: 0 !important;
+    background: linear-gradient(135deg, #00f0ff 50%, var(--dynamic-color, #f59e0b) 50%) !important;
+    border: 1.5px solid #00f0ff !important;
+    box-shadow: 0 0 25px #00f0ff, 0 0 35px var(--dynamic-color, #f59e0b) !important;
+    animation: orbGlow 1.5s infinite alternate ease-in-out;
+  }
+  .aegis-center-badge.collapsed-orb .aegis-core-text,
+  .aegis-center-badge.collapsed-orb .aegis-dots-wrap {
+    opacity: 0 !important; pointer-events: none;
+  }
+
+  .aegis-core-text {
+    font-size:16px; font-weight:900; letter-spacing:5px;
+    background: linear-gradient(90deg, #00f0ff 0%, #00f0ff 45%, var(--dynamic-color, #f59e0b) 55%, var(--dynamic-color, #f59e0b) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 10px rgba(0,240,255,0.6)) drop-shadow(0 0 16px var(--dynamic-color, #f59e0b));
+    text-transform: uppercase;
+  }
+  .aegis-dots-wrap {
+    position:absolute; width:125%; height:125%; display:flex; justify-content:space-between; align-items:center; pointer-events:none;
+  }
+  .aegis-micro-dot {
+    width:5px; height:5px; border-radius:50%; background:#00f0ff; box-shadow:0 0 10px #00f0ff;
+    animation: dotOrbit 2s infinite ease-in-out alternate;
+  }
+  .aegis-micro-dot.right {
+    background:var(--dynamic-color, #f59e0b); box-shadow:0 0 10px var(--dynamic-color, #f59e0b); animation-delay: 1s;
+  }
+
+  .status-wrap { position:relative; display:flex; justify-content:flex-end; align-items:center; width:340px; height:42px; }
+  .status-tag {
+    width:310px; height:38px; border-radius:20px;
+    border:1.5px solid #f59e0b; background:rgba(245, 158, 11, 0.2); color:#f59e0b;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    box-shadow:0 0 14px rgba(245, 158, 11, 0.4); overflow:hidden; white-space:nowrap;
+    transform-origin: right center;
+    transition: width 0.6s cubic-bezier(0.25, 1, 0.5, 1), border-radius 0.6s ease, box-shadow 1s ease;
+  }
+  .status-tag-text {
+    font-size:12px; font-weight:800; opacity:1; transition: opacity 0.4s ease; display:flex; align-items:center; gap:8px;
+  }
+  .status-tag.collapsed {
+    width:38px !important; border-radius:50% !important; padding:0 !important;
+    box-shadow:0 0 25px currentColor, inset 0 0 10px currentColor !important;
+    animation: orbGlow 1.5s infinite alternate ease-in-out;
+  }
+  .status-tag.collapsed .status-tag-text { opacity:0 !important; pointer-events:none; }
+
+  #viewMain {
+    z-index:10; flex:1; display:flex; align-items:center; justify-content:center;
+    gap:45px; padding:20px 40px; position:relative;
+    transition:0.6s all cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  #viewMain.hide-away { opacity:0; pointer-events:none; }
+
+  .avatar-core {
+    position:relative; width:270px; height:270px; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), transform 0.6s ease;
+  }
+  .avatar-core.dissolved, .avatar-core.mini-hidden { opacity: 0 !important; pointer-events: none; transform: scale(0.6); }
+  .avatar-core.soft-reentry { opacity: 0.15 !important; transition: opacity 0.6s ease; }
+  .avatar-core:hover .avatar-box { box-shadow:0 0 45px rgba(0,255,204,0.8); transform:scale(1.04); }
+  
+  .radar-ring { position:absolute; border-radius:50%; border:2px dashed #00ffcc; width:260px; height:260px; animation:rotateRing 14s linear infinite; opacity:0.6; pointer-events:none; }
+  .radar-ring-2 { position:absolute; border-radius:50%; border:1px solid rgba(0,255,204,0.3); width:285px; height:285px; animation:rotateRingRev 18s linear infinite; pointer-events:none; }
+  .radar-ring.broken, .radar-ring-2.broken { opacity:0 !important; transform:scale(1.3); filter:blur(10px); }
+
+  .avatar-box {
+    position:relative; width:215px; height:215px; border-radius:50%; overflow:hidden;
+    border:2.5px solid #00ffcc; box-shadow:0 0 30px rgba(0,255,204,0.4); z-index:2; background:#02040a;
+    transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), transform 0.8s ease, filter 0.8s ease;
+  }
+  .avatar-box::after {
+    content:''; position:absolute; top:0; left:0; width:100%; height:100%; border-radius:50%; box-shadow:inset 0 0 30px 15px #02040a; pointer-events:none;
+  }
+  .avatar-box img { width:100%; height:100%; object-fit:cover; display:block; }
+  .avatar-box.soft-fade { opacity: 0 !important; transform: scale(0.85); filter: blur(12px); }
+
+  /* TELEMETRY CARD - REGULAR, SHIELD & BOTTOM-RIGHT DOCK */
+  .telemetry-card {
+    width:430px; background:rgba(2, 6, 23, 0.85); border:1.5px solid rgba(0,255,204,0.4);
+    border-radius:18px; padding:24px; backdrop-filter:blur(18px);
+    box-shadow:0 0 30px rgba(0,0,0,0.8); cursor: pointer;
+    transition: all 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .telemetry-card.dissolved {
+    opacity: 0 !important; pointer-events: none; transform: scale(0.8) translateY(20px); filter: blur(10px);
+  }
+
+  .telemetry-card.bottom-right-dock {
+    position: fixed !important; bottom: 25px !important; right: 25px !important;
+    width: 280px !important; padding: 16px !important; border-radius: 14px !important;
+    border-color: #00ffcc !important; box-shadow: 0 0 35px rgba(0,255,204,0.5) !important;
+    z-index: 100 !important; opacity: 1 !important; transform: scale(1) translateY(0) !important;
+  }
+
+  .telemetry-card.right-center-shield {
+    position: fixed !important;
+    top: 50% !important; right: 60px !important;
+    transform: translateY(-50%) !important;
+    width: 320px !important; height: 320px !important;
+    border-radius: 50% !important;
+    border: 3px solid #00f0ff !important;
+    background: radial-gradient(circle, rgba(2,6,23,0.95) 0%, rgba(0,240,255,0.2) 100%), url('aegis_shield.png') !important;
+    background-size: cover !important; background-position: center !important;
+    box-shadow: 0 0 60px rgba(0,240,255,0.85), inset 0 0 30px rgba(0,240,255,0.4) !important;
+    display: flex !important; flex-direction: column !important;
+    align-items: center !important; justify-content: center !important;
+    text-align: center !important; z-index: 100 !important;
+    animation: shieldPulse 2s infinite alternate ease-in-out;
+  }
+  .telemetry-card.right-center-shield .gauge-title { font-size: 16px !important; letter-spacing: 4px !important; color: #fff !important; text-shadow: 0 0 12px #00f0ff; margin-bottom: 0 !important; background: rgba(0,0,0,0.75); padding: 8px 18px; border-radius: 8px; }
+  .telemetry-card.right-center-shield .gauge-value,
+  .telemetry-card.right-center-shield .progress-bg,
+  .telemetry-card.right-center-shield .metric-grid { display: none !important; }
+
+  @keyframes shieldPulse {
+    0% { box-shadow: 0 0 30px rgba(0,240,255,0.5); transform: translateY(-50%) scale(1); }
+    100% { box-shadow: 0 0 75px rgba(0,240,255,0.95); transform: translateY(-50%) scale(1.04); }
+  }
+
+  .gauge-title { font-size:12px; font-weight:900; color:#94a3b8; letter-spacing:1.5px; margin-bottom:6px; }
+  .gauge-value { font-size:36px; font-weight:900; color:#fff; text-shadow:0 0 15px #00ffcc; margin-bottom:12px; }
+  .progress-bg { width:100%; height:10px; background:rgba(255,255,255,0.06); border-radius:5px; overflow:hidden; margin-bottom:18px; border:1px solid rgba(255,255,255,0.1); }
+  .progress-bar { height:100%; width:0%; background:#00ffcc; box-shadow:0 0 12px #00ffcc; transition:width 0.6s ease; }
+
+  .metric-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .metric-pill { background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); padding:10px 14px; border-radius:10px; }
+  .pill-lbl { font-size:11px; color:#64748b; font-weight:700; }
+  .pill-val { font-size:15px; color:#fff; font-weight:900; margin-top:3px; }
+
+  #viewPurge {
+    position:absolute; top:75px; left:0; width:100%; height:calc(100vh - 75px);
+    z-index:25; display:none; flex-direction:column; padding:25px 40px;
+    background:rgba(2,4,10,0.92); backdrop-filter:blur(22px);
+  }
+  #viewPurge.active { display:flex !important; }
+  .purge-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid rgba(239,68,68,0.2); padding-bottom:14px; }
+  .broken-title-wrap { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .warn-shield { width:28px; height:28px; object-fit:contain; filter:drop-shadow(0 0 10px #ef4444); }
+  .broken-char {
+    display:inline-block; font-size:22px; font-weight:900; color:#ef4444;
+    text-shadow: 0 0 12px rgba(239, 68, 68, 0.7); margin-right: 12px;
+    transform: rotate(calc(-4deg + 8deg * var(--r)));
+    clip-path: polygon(0 0, 100% 0, 85% 100%, 0% 100%);
+  }
+  .broken-char.space { width: 25px; margin-right: 0; }
+  .purge-list { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:14px; padding-right:10px; }
+  .app-row {
+    display:flex; justify-content:space-between; align-items:center;
+    background:rgba(15,23,42,0.6); border:1px solid rgba(255,255,255,0.08);
+    padding:14px 20px; border-radius:12px; transition:0.3s;
+  }
+  .app-row.hit-shake {
+    animation: targetHit 0.4s ease-in-out; border-color: #ef4444 !important; box-shadow: 0 0 25px rgba(239, 68, 68, 0.6) !important;
+  }
+  .app-row:hover { border-color:#00ffcc; background:rgba(30,41,59,0.8); }
+  .app-info { display:flex; flex-direction:column; gap:4px; }
+  .app-title-tag { display:flex; align-items:center; gap:8px; }
+  .app-name { font-size:15px; font-weight:900; color:#fff; }
+  .app-tag { font-size:10px; padding:2px 8px; border-radius:10px; background:rgba(0,255,204,0.1); border:1px solid #00ffcc; color:#00ffcc; font-weight:800; }
+  .app-meta { font-size:12px; color:#94a3b8; }
+  .btn-group { display:flex; gap:10px; }
+  .temp-btn { background:rgba(245,158,11,0.2); border:1px solid #f59e0b; color:#f59e0b; padding:8px 14px; border-radius:6px; font-weight:900; font-size:11px; cursor:pointer; }
+  .temp-btn:hover { background:#f59e0b; color:#020617; box-shadow:0 0 12px #f59e0b; }
+  .perm-btn { background:rgba(239,68,68,0.2); border:1px solid #ef4444; color:#ef4444; padding:8px 14px; border-radius:6px; font-weight:900; font-size:11px; cursor:pointer; }
+  .perm-btn:hover { background:#ef4444; color:#fff; box-shadow:0 0 12px #ef4444; }
+
+  #viewAegis {
+    position:absolute; top:75px; left:0; width:100%; height:calc(100vh - 75px);
+    z-index:25; display:none; flex-direction:column; padding:25px 40px;
+    background:rgba(2,4,10,0.94); backdrop-filter:blur(24px);
+  }
+  #viewAegis.active { display:flex !important; }
+  .aegis-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid rgba(0,240,255,0.2); padding-bottom:14px; }
+  .aegis-deck-title { font-size:20px; font-weight:900; color:#00f0ff; letter-spacing:2px; text-shadow:0 0 15px rgba(0,240,255,0.6); }
+  .aegis-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; margin-bottom:20px; }
+  .aegis-stat-card { background:rgba(15,23,42,0.7); border:1.5px solid rgba(0,240,255,0.2); border-radius:12px; padding:16px; text-align:center; }
+  .stat-card-num { font-size:24px; font-weight:900; color:#00f0ff; text-shadow:0 0 10px #00f0ff; margin-top:4px; }
+  .stat-card-label { font-size:11px; color:#94a3b8; font-weight:800; letter-spacing:1px; }
+  .aegis-logs-box { flex:1; background:rgba(2,6,23,0.8); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:16px; overflow-y:auto; display:flex; flex-direction:column; gap:10px; }
+  .log-row { display:flex; justify-content:space-between; align-items:center; background:rgba(15,23,42,0.5); padding:10px 14px; border-radius:8px; border-left:3px solid var(--log-color, #00ffcc); font-size:12px; }
+  .log-time { color:#64748b; font-weight:800; }
+  .log-details { color:#f8fafc; font-weight:700; }
+  .log-badge { font-size:10px; font-weight:900; padding:2px 6px; border-radius:4px; color:var(--log-color); border:1px solid var(--log-color); }
+  .deck-close-btn { background:rgba(239,68,68,0.2); border:1px solid #ef4444; color:#ef4444; padding:6px 14px; border-radius:6px; font-weight:900; cursor:pointer; }
+  .deck-close-btn:hover { background:#ef4444; color:#fff; }
+
+  #purgeModal {
+    position:fixed; top:0; left:0; width:100%; height:100%;
+    background:rgba(2,4,10,0.88); backdrop-filter:blur(18px);
+    z-index:99; display:none; align-items:center; justify-content:center;
+  }
+  .modal-box {
+    width:560px; background:rgba(15,23,42,0.95); border:2px solid #ef4444;
+    border-radius:20px; padding:30px; box-shadow:0 0 45px rgba(239,68,68,0.4);
+    display:flex; flex-direction:column; align-items:center; text-align:center;
+  }
+  .modal-avatar { position:relative; width:130px; height:130px; display:flex; align-items:center; justify-content:center; margin-bottom:15px; }
+  .modal-radar { position:absolute; width:125px; height:125px; border-radius:50%; border:2px dashed #ef4444; animation:rotateRing 8s linear infinite; }
+  .modal-img-box { width:100px; height:100px; border-radius:50%; overflow:hidden; border:2px solid #ef4444; box-shadow:0 0 25px #ef4444; }
+  .modal-img-box img { width:100%; height:100%; object-fit:cover; }
+  .modal-title { font-size:18px; font-weight:900; color:#ef4444; letter-spacing:1px; margin-bottom:8px; }
+  .modal-info-card { width:100%; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:15px; text-align:left; margin:15px 0; font-size:12px; line-height:1.6; color:#cbd5e1; }
+  .modal-btns { display:flex; gap:14px; width:100%; }
+  .m-btn-cancel { flex:1; background:#1e293b; border:1px solid #64748b; color:#fff; padding:10px; border-radius:8px; font-weight:900; cursor:pointer; }
+  .m-btn-confirm { flex:1; background:#ef4444; border:none; color:#fff; padding:10px; border-radius:8px; font-weight:900; cursor:pointer; box-shadow:0 0 15px #ef4444; }
+
+  @keyframes rotateRing { 0% { transform:rotate(0deg); } 100% { transform:rotate(360deg); } }
+  @keyframes rotateRingRev { 0% { transform:rotate(360deg); } 100% { transform:rotate(0deg); } }
+  @keyframes orbGlow { 0% { box-shadow: 0 0 15px currentColor; } 100% { box-shadow: 0 0 35px currentColor; } }
+  @keyframes aegisFloat { 0% { transform: translate(-50%, -58%); } 100% { transform: translate(-50%, -42%); } }
+  @keyframes dotOrbit { 0% { transform: scale(0.8) translateY(-4px); opacity:0.4; } 100% { transform: scale(1.4) translateY(4px); opacity:1; } }
+  @keyframes auraPulse { 0% { filter: drop-shadow(
+  <div id="viewMain">
+    <div class="avatar-core" id="avatarCoreRef" onclick="triggerRocketSimulationDrop()">
+      <div class="radar-ring" id="radar1"></div>
+      <div class="radar-ring-2" id="radar2"></div>
+      <div class="avatar-box" id="avatarBox">
+        <img src="panda_avatar.png" alt="Cyber Panda" />
+      </div>
+    </div>
+
+    <div class="telemetry-card" id="telemetryCard" 
+         onmouseenter="startMiniTimer()" 
+         onmouseleave="cancelMiniTimer()" 
+         onclick="triggerAegisRecommendation()">
+      <div class="gauge-title" id="mainGaugeTitle">ACTIVE RAM ALLOCATION</div>
+      <div class="gauge-value" id="ramVal">-- / -- GB</div>
+      
+      <div class="progress-bg">
+        <div class="progress-bar" id="ramBar"></div>
+      </div>
+
+      <div class="metric-grid">
+        <div class="metric-pill">
+          <div class="pill-lbl" id="pillLbl1">CPU USAGE</div>
+          <div class="pill-val" id="cpuVal">--%</div>
+        </div>
+        <div class="metric-pill">
+          <div class="pill-lbl" id="pillLbl2">ACTIVE TASKS</div>
+          <div class="pill-val" id="taskVal">0</div>
+        </div>
+        <div class="metric-pill">
+          <div class="pill-lbl" id="pillLbl3">STORAGE FREE</div>
+          <div class="pill-val" id="diskVal">-- GB</div>
+        </div>
+        <div class="metric-pill">
+          <div class="pill-lbl" id="pillLbl4">AEGIS SENTINEL</div>
+          <div class="pill-val" id="matrixState">ONLINE (ACTIVE)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="viewPurge">
+    <div class="purge-header">
+      <div class="broken-title-wrap" id="brokenTitleWrap">
+        <img src="panda_logo.png" class="warn-shield" alt="Warning Shield" />
+      </div>
+      <button class="deck-close-btn" onclick="returnToHome()">CLOSE [X]</button>
+    </div>
+    <div class="purge-list" id="purgeList"></div>
+  </div>
+
+  <div id="viewAegis">
+    <div class="aegis-header">
+      <div>
+        <div class="aegis-deck-title">🛡️ AEGIS ZERO-CON SENTINEL INSPECTOR</div>
+        <div style="font-size:12px; color:#94a3b8; margin-top:4px;" id="aegisCurrentAction">Monitoring target folder: Downloads</div>
+      </div>
+      <button class="deck-close-btn" onclick="returnToHome()">CLOSE [X]</button>
+    </div>
+
+    <div class="aegis-grid">
+      <div class="aegis-stat-card">
+        <div class="stat-card-label">FILES SORTED</div>
+        <div class="stat-card-num" id="statSorted">0</div>
+      </div>
+      <div class="aegis-stat-card">
+        <div class="stat-card-label">VAULT ENCRYPTED</div>
+        <div class="stat-card-num" id="statVault" style="color:#38bdf8;">0</div>
+      </div>
+      <div class="aegis-stat-card">
+        <div class="stat-card-label">THREATS BLOCKED</div>
+        <div class="stat-card-num" id="statThreats" style="color:#ef4444;">0</div>
+      </div>
+      <div class="aegis-stat-card">
+        <div class="stat-card-label">HONEYPOT STATUS</div>
+        <div class="stat-card-num" style="color:#00ffcc; font-size:18px; margin-top:8px;">ARMED & SECURE</div>
+      </div>
+    </div>
+
+    <div style="font-size:13px; font-weight:900; color:#00f0ff; margin-bottom:8px; letter-spacing:1px;">LIVE SENTINEL AUDIT TRAIL:</div>
+    <div class="aegis-logs-box" id="aegisLogsContainer"></div>
+  </div>
+
+  <div id="purgeModal">
+    <div class="modal-box">
+      <div class="modal-avatar">
+        <div class="modal-radar"></div>
+        <div class="modal-img-box">
+          <img src="panda_avatar.png" alt="Modal Panda" />
+        </div>
+      </div>
+      <div class="modal-title" id="mTitle">CONFIRM PERMANENT PURGE</div>
+      <div class="modal-info-card" id="mDetails"></div>
+      <div class="modal-btns">
+        <button class="m-btn-cancel" onclick="closeModal()">CANCEL (ABORT)</button>
+        <button class="m-btn-confirm" id="mConfirmBtn">EXECUTE PURGE</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    const canvas = document.getElementById('particleCanvas');
+    const ctx = canvas.getContext('2d');
+    const bCanvas = document.getElementById('lightBurstCanvas');
+    const bCtx = bCanvas.getContext('2d');
+    const pCanvas = document.getElementById('pulseCanvas');
+    const pCtx = pCanvas.getContext('2d');
+
+    let particles = [];
+    let burstRays = [];
+    let currentRamPercent = 20;
+    let currentActiveTab = 'home';
+
+    let isRocketActive = false;
+    let isReentryPhase = false;
+    let currentRocketPoints = [];
+
+    let isRightCenterShield = false;
+    let shieldHoverTimer = null;
+    let cachePurgeInterval = null;
+    let fileAuditLoop = null;
+
+    const COSMIC_FORMS = [
+      { name: "FORM: 5-STAR PENTAGRAM", points: 5, type: 'star' },
+      { name: "FORM: MILKY-WAY SPIRAL", arms: 3, type: 'spiral' },
+      { name: "FORM: 8-STAR CELESTIAL", points: 8, type: 'star' },
+      { name: "FORM: NEBULA CYCLONE", type: 'vortex' }
+    ];
+    let currentFormIndex = 0;
+    let formMorphProgress = 0;
+
+    const MOCK_CACHE_LOGS = [
+      "[CACHE PURGE] Flushing browser temp storage: C:/Users/AppData/Local/Temp/cache_09",
+      "[RAM FLUSH] Unloading dormant background threads & prefetch indexes",
+      "[DEEP CLEAN] Erasing browser session cookies & temporary web archives",
+      "[SYSTEM OPTIMIZE] Reclaiming fragmented physical memory segments",
+      "[ZERO-CON SECURE] Purging clipboard history and recent document traces",
+      "[KERNEL BOOST] Resetting GPU shader cache and directX memory buffers",
+      "[SENTINEL] All cache sectors cleared. System fully optimized."
+    ];
+
+    const AEGIS_RECOMMENDATIONS = [
+      "AEGIS INTELLIGENCE: Based on your active memory topology, switching to hardware-accelerated rendering will boost overall system response by 18%.",
+      "AEGIS ADVISORY: Your disk sector shows optimal read speeds. Enabling background Vault encryption will secure cached files with zero CPU overhead.",
+      "AEGIS RECOMMENDATION: Unused background processes detected. Allocating dedicated thread priority to active workspace applications will ensure peak performance."
+    ];
+
+    async function fetchDynamicInactiveFiles() {
+      if (window.pywebview && window.pywebview.api) {
+        try {
+          const realFile = await window.pywebview.api.get_next_inactive_file();
+          if (realFile && realFile.path) {
+            return `Target: ${realFile.path}\nStatus: Dormant for ${realFile.hours_idle} hours.\nRecommendation: Archive or purge safely.`;
+          }
+        } catch (e) {}
+      }
+      const fallbacks = [
+        "Target: C:/Users/Admin/AppData/Local/Temp/cached_asset_99.tmp\nStatus: Unaccessed for 96 hours.\nRecommendation: Safe to purge from active index.",
+        "Target: D:/Downloads/archive_package_v2.zip\nStatus: Dormant for 144 hours.\nRecommendation: Relocate to secondary partition.",
+        "Target: C:/Workspace/Logs/system_kernel_trace.log\nStatus: Inactive for 200 hours.\nRecommendation: Clean sector buffer."
+      ];
+      return fallbacks[Math.floor(Math.random() * fallbacks.length)];
+    }
+
+    function startMiniTimer() {
+      if (isRightCenterShield || isRocketActive) return;
+      shieldHoverTimer = setTimeout(() => { enterRightCenterShieldMode(); }, 12000);
+    }
+    function cancelMiniTimer() { clearTimeout(shieldHoverTimer); }
+
+    async function enterRightCenterShieldMode() {
+      isRightCenterShield = true;
+      const card = document.getElementById('telemetryCard');
+      const topBar = document.getElementById('topBar');
+      const avatar = document.getElementById('avatarCoreRef');
+      const streamDiv = document.getElementById('easterEggStream');
+      const escBtn = document.getElementById('escExitBtn');
+
+      card.classList.add('right-center-shield');
+      topBar.classList.add('mini-hidden');
+      avatar.classList.add('mini-hidden');
+
+      document.getElementById('mainGaugeTitle').innerText = "AEGIS";
+
+      streamDiv.innerHTML = '';
+      streamDiv.classList.add('active');
+      escBtn.classList.add('active');
+      
+      const initialText = await fetchDynamicInactiveFiles();
+      const firstLine = document.createElement('div');
+      firstLine.className = 'easter-egg-line';
+      firstLine.innerText = initialText;
+      streamDiv.appendChild(firstLine);
+
+      fileAuditLoop = setInterval(async () => {
+        const nextText = await fetchDynamicInactiveFiles();
+        streamDiv.innerHTML = '';
+        const line = document.createElement('div');
+        line.className = 'easter-egg-line';
+        line.innerText = nextText;
+        streamDiv.appendChild(line);
+      }, 13000);
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && isRightCenterShield) {
+        exitRightCenterShieldMode();
+      }
+    });
+
+    function triggerAegisRecommendation() {
+      if (!isRightCenterShield) return;
+      exitRightCenterShieldMode();
+    }
+
+    function exitRightCenterShieldMode() {
+      if (!isRightCenterShield) return;
+      isRightCenterShield = false;
+      isReentryPhase = true;
+
+      playBoomAttackSound();
+      clearInterval(fileAuditLoop);
+
+      const card = document.getElementById('telemetryCard');
+      const topBar = document.getElementById('topBar');
+      const avatar = document.getElementById('avatarCoreRef');
+      const streamDiv = document.getElementById('easterEggStream');
+      const escBtn = document.getElementById('escExitBtn');
+
+      streamDiv.classList.remove('active');
+      streamDiv.innerHTML = '';
+      escBtn.classList.remove('active');
+
+      card.classList.remove('right-center-shield');
+      card.classList.add('dissolved');
+
+      avatar.classList.remove('dissolved');
+      topBar.classList.remove('mini-hidden');
+
+      document.getElementById('mainGaugeTitle').innerText = "ACTIVE RAM ALLOCATION";
+
+      setTimeout(() => {
+        isReentryPhase = false;
+        card.classList.remove('dissolved');
+        avatar.classList.add('soft-reentry');
+        setTimeout(() => { avatar.classList.remove('soft-reentry'); }, 5000);
+      }, 2500);
+    }
+
+    function generate1of1RocketSimulation(burnedList) {
+      let seed = Math.floor(Math.random() * 9999999);
+      let sig = "ROCKET_CACHE_" + (seed % 1000) + "_" + Math.floor(Math.random() * 88888);
+
+      while (burnedList && burnedList.includes(sig)) {
+        seed = Math.floor(Math.random() * 9999999);
+        sig = "ROCKET_CACHE_" + (seed % 1000) + "_" + Math.floor(Math.random() * 88888);
+      }
+
+      const pts = [];
+      const mode = seed % 3;
+
+      if (mode === 0) {
+        for (let y = -90; y <= 60; y += 6) {
+          const w = Math.sin((y + 90) / 150 * Math.PI) * 22 + 4;
+          for (let x = -w; x <= w; x += 8) pts.push({ x: x, y: y });
+        }
+        for (let i = 0; i <= 10; i++) {
+          pts.push({ x: 0, y: -90 - i * 4 });
+          pts.push({ x: -i * 1.5, y: -90 - i * 3 });
+          pts.push({ x: i * 1.5, y: -90 - i * 3 });
+        }
+        for (let y = 65; y <= 130; y += 7) {
+          const spread = (y - 65) * 0.45;
+          for (let x = -spread; x <= spread; x += 10) pts.push({ x: x, y: y });
+        }
+      } else if (mode === 1) {
+        for (let y = -70; y <= 50; y += 6) {
+          pts.push({ x: 0, y: y }); pts.push({ x: -18, y: y }); pts.push({ x: 18, y: y });
+        }
+        for (let i = -30; i <= 30; i += 6) pts.push({ x: i, y: 55 });
+        for (let y = 60; y <= 120; y += 8) {
+          for (let x = -12; x <= 12; x += 6) pts.push({ x: x, y: y });
+        }
+      } else {
+        for (let a = 0; a < Math.PI * 2; a += 0.25) {
+          pts.push({ x: Math.cos(a) * 35, y: Math.sin(a) * 35 });
+          pts.push({ x: Math.cos(a) * 65, y: Math.sin(a) * 65 });
+        }
+        for (let y = -40; y <= 110; y += 8) pts.push({ x: 0, y: y });
+      }
+
+      return { signature: sig, points: pts };
+    }
+
+    let audioCtx = null;
+    function playRocketThrusterSound() {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+
+        const now = audioCtx.currentTime;
+        osc.frequency.setValueAtTime(45, now);
+        osc.frequency.exponentialRampToValueAtTime(220, now + 4.5);
+        osc.frequency.exponentialRampToValueAtTime(900, now + 6.6);
+        osc.frequency.exponentialRampToValueAtTime(70, now + 7.2);
+
+        gain.gain.setValueAtTime(0.01, now);
+        gain.gain.linearRampToValueAtTime(0.15, now + 4.5);
+        gain.gain.linearRampToValueAtTime(0.28, now + 6.5);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 7.2);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(now + 7.3);
+      } catch (e) {}
+    }
+
+    function playBoomAttackSound() {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+
+        const now = audioCtx.currentTime;
+        osc.frequency.setValueAtTime(180, now);
+        osc.frequency.exponentialRampToValueAtTime(30, now + 0.4);
+
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(now + 0.5);
+      } catch(e) {}
+    }
+
+    function triggerLightBurst() {
+      const cx = window.innerWidth / 2;
+      const cy = window.innerHeight / 2;
+      burstRays = [];
+      for (let i = 0; i < 160; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 12 + 6;
+        burstRays.push({
+          x: cx, y: cy,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          alpha: 1,
+          color: Math.random() > 0.5 ? '#00ffcc' : '#ffffff'
+        });
+      }
+    }
+
+    function renderLightBurst() {
+      bCtx.clearRect(0, 0, bCanvas.width, bCanvas.height);
+      for (let i = burstRays.length - 1; i >= 0; i--) {
+        let r = burstRays[i];
+        r.x += r.vx; r.y += r.vy;
+        r.vx *= 0.95; r.vy *= 0.95;
+        r.alpha -= 0.035;
+
+        if (r.alpha <= 0) { burstRays.splice(i, 1); continue; }
+
+        bCtx.strokeStyle = r.color;
+        bCtx.shadowColor = r.color;
+        bCtx.shadowBlur = 15;
+        bCtx.lineWidth = 2.5;
+        bCtx.beginPath();
+        bCtx.moveTo(r.x, r.y);
+        bCtx.lineTo(r.x - r.vx * 2, r.y - r.vy * 2);
+        bCtx.stroke();
+        bCtx.shadowBlur = 0;
+      }
+      requestAnimationFrame(renderLightBurst);
+    }
+    renderLightBurst();
+
+    async function triggerRocketSimulationDrop() {
+      if (isRocketActive || isRightCenterShield) return;
+
+      let burned = [];
+      try {
+        if (window.pywebview && window.pywebview.api) {
+          burned = await window.pywebview.api.get_burned_holograms();
+        }
+      } catch (e) {}
+
+      const drop = generate1of1RocketSimulation(burned);
+      try {
+        if (window.pywebview && window.pywebview.api) {
+          await window.pywebview.api.burn_hologram_signature(drop.signature);
+        }
+      } catch (e) {}
+
+      isRocketActive = true;
+      isReentryPhase = false;
+      currentRocketPoints = drop.points;
+
+      const topBar = document.getElementById('topBar');
+      const avatarCore = document.getElementById('avatarCoreRef');
+      const telemetryCard = document.getElementById('telemetryCard');
+      const r1 = document.getElementById('radar1');
+      const r2 = document.getElementById('radar2');
+      const streamDiv = document.getElementById('cachePurgeStream');
+
+      topBar.classList.add('dissolved');
+      avatarCore.classList.add('dissolved');
+      r1.classList.add('broken');
+      r2.classList.add('broken');
+      telemetryCard.classList.add('dissolved');
+
+      streamDiv.innerHTML = '';
+      streamDiv.classList.add('active');
+      let logIdx = 0;
+      cachePurgeInterval = setInterval(() => {
+        if (logIdx < MOCK_CACHE_LOGS.length) {
+          const line = document.createElement('div');
+          line.className = 'purge-terminal-line';
+          line.innerText = MOCK_CACHE_LOGS[logIdx];
+          streamDiv.appendChild(line);
+          if (streamDiv.children.length > 8) {
+            streamDiv.removeChild(streamDiv.firstChild);
+          }
+          logIdx++;
+        }
+      }, 750);
+
+      playRocketThrusterSound();
+
+      setTimeout(() => {
+        clearInterval(cachePurgeInterval);
+        streamDiv.classList.remove('active');
+        streamDiv.innerHTML = '';
+        triggerLightBurst();
+        currentRocketPoints = [];
+      }, 6800);
+
+      setTimeout(() => {
+        isRocketActive = false;
+        isReentryPhase = true;
+
+        avatarCore.classList.remove('dissolved');
+        r1.classList.remove('broken');
+        r2.classList.remove('broken');
+        topBar.classList.remove('dissolved');
+
+        setTimeout(() => {
+          isReentryPhase = false;
+          telemetryCard.classList.remove('dissolved');
+          avatarCore.classList.add('soft-reentry');
+
+          setTimeout(() => {
+            avatarCore.classList.remove('soft-reentry');
+          }, 5000);
+
+        }, 2500);
+
+      }, 7200);
+    }
+
+    function resize() {
+      canvas.width = bCanvas.width = pCanvas.width = window.innerWidth;
+      canvas.height = bCanvas.height = pCanvas.height = window.innerHeight;
+      initParticles();
+    }
+    window.addEventListener('resize', resize);
+
+    function initParticles() {
+      particles = [];
+      const count = Math.floor((canvas.width * canvas.height) / 5500);
+      for (let i = 0; i < count; i++) {
+        const isDark = Math.random() < 0.35;
+        particles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          vx: (Math.random() - 0.5) * 0.7,
+          vy: (Math.random() - 0.5) * 0.7,
+          radius: isDark ? Math.random() * 3 + 1.8 : Math.random() * 2 + 1,
+          isDark: isDark,
+          alpha: Math.random() * 0.6 + 0.3,
+          ptIdx: i,
+          angle: (i / count) * Math.PI * 2,
+          orbitDist: Math.random() * 350 + 60
+        });
+      }
+    }
+
+    const BRAND_STR = "Panda OS";
+    function renderBrandChars(str) {
+      const brandWrap = document.getElementById('titleWrap');
+      if (!brandWrap) return;
+      brandWrap.innerHTML = '';
+      for (let i = 0; i < str.length; i++) {
+        const ch = str[i];
+        const span = document.createElement('span');
+        span.className = 'p-char';
+        span.innerHTML = ch === ' ' ? '&nbsp;' : ch;
+        span.id = 'pchar_' + i;
+        brandWrap.appendChild(span);
+      }
+    }
+
+    function initBrokenTitle() {
+      const TITLE_STR = "THREAT AUDIT & MEMORY PURGE";
+      const titleWrap = document.getElementById('brokenTitleWrap');
+      if (!titleWrap) return;
+      titleWrap.innerHTML = '<img src="panda_logo.png" class="warn-shield" alt="Warning Shield" />';
+      for (let i = 0; i < TITLE_STR.length; i++) {
+        const ch = TITLE_STR[i];
+        const span = document.createElement('span');
+        if (ch === ' ') {
+          span.className = 'broken-char space';
+        } else {
+          span.className = 'broken-char';
+          span.innerText = ch;
+          span.style.setProperty('--r', Math.random().toFixed(2));
+        }
+        titleWrap.appendChild(span);
+      }
+    }
+
+    function animateParticles() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const isCritical = currentRamPercent >= 90;
+      const speedMult = isCritical ? 2.2 : 1;
+      const isDark = (currentActiveTab === 'panda_dark');
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      const originX = isDark ? 105 : centerX;
+      const originY = isDark ? 145 : centerY;
+
+      formMorphProgress += 0.02;
+
+      for (let i = 0; i < particles.length; i++) {
+        let p = particles[i];
+
+        if (isRocketActive && currentRocketPoints.length > 0) {
+          const pt = currentRocketPoints[p.ptIdx % currentRocketPoints.length];
+          p.x += (centerX + pt.x - p.x) * 0.09;
+          p.y += (centerY + pt.y - p.y) * 0.09;
+
+          if (i % 8 === 0) {
+            ctx.strokeStyle = 'rgba(0, 255, 204, 0.22)';
+            ctx.lineWidth = 0.8;
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(p.x, p.y);
+            ctx.stroke();
+          }
+        } else if (isReentryPhase) {
+          const angle = p.angle + formMorphProgress * 2;
+          const targetX = 105 + Math.cos(angle) * (p.orbitDist * 0.6);
+          const targetY = 145 + Math.sin(angle) * (p.orbitDist * 0.6);
+          p.x += (targetX - p.x) * 0.08;
+          p.y += (targetY - p.y) * 0.08;
+        } else if (isDark) {
+          const form = COSMIC_FORMS[currentFormIndex];
+          p.angle += 0.02 * speedMult;
+          let r = p.orbitDist;
+          if (form.type === 'star') {
+            r = p.orbitDist * (0.6 + 0.4 * Math.cos(form.points * p.angle + formMorphProgress));
+          } else if (form.type === 'spiral') {
+            r = (p.orbitDist * 0.4) + ((p.angle * 25) % 200);
+          }
+          p.x += (originX + Math.cos(p.angle) * r - p.x) * 0.08;
+          p.y += (originY + Math.sin(p.angle) * r - p.y) * 0.08;
+        } else {
+          p.x += p.vx * speedMult; p.y += p.vy * speedMult;
+          if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+          if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+        }
+
+        if (p.isDark) {
+          ctx.fillStyle = `rgba(0, 0, 0, ${p.alpha * 0.9})`;
+        } else {
+          if (isRocketActive || isReentryPhase) {
+            ctx.fillStyle = `rgba(0, 255, 204, ${p.alpha * 1.2})`;
+          } else if (isCritical) {
+            ctx.fillStyle = `rgba(239, 68, 68, ${p.alpha})`;
+          } else if (currentRamPercent >= 60) {
+            ctx.fillStyle = `rgba(245, 158, 11, ${p.alpha})`;
+          } else {
+            ctx.fillStyle = isDark ? `rgba(0, 240, 255, ${p.alpha})` : `rgba(0, 255, 204, ${p.alpha})`;
+          }
+        }
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        for (let j = i + 1; j < particles.length; j++) {
+          let p2 = particles[j];
+          let dist = Math.hypot(p.x - p2.x, p.y - p2.y);
+          if (dist < (isRocketActive ? 40 : (isReentryPhase ? 50 : (isDark ? 55 : 80)))) {
+            ctx.strokeStyle = (isRocketActive || isReentryPhase) ? 'rgba(0, 255, 204, 0.25)' : (isDark ? 'rgba(0, 240, 255, 0.16)' : 'rgba(0, 255, 204, 0.12)');
+            ctx.lineWidth = 0.8;
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+          }
+        }
+      }
+      requestAnimationFrame(animateParticles);
+    }
+
+    function handleTabClick(targetTab) {
+      if (currentActiveTab === targetTab) {
+        returnToHome();
+      } else {
+        switchTab(targetTab);
+      }
+    }
+
+    function switchTab(targetTab) {
+      const mainView = document.getElementById('viewMain');
+      const aegisView = document.getElementById('viewAegis');
+      const purgeView = document.getElementById('viewPurge');
+      const aegisBadge = document.getElementById('aegisBadge');
+      const statusTag = document.getElementById('statusTag');
+      const pandaLogo = document.getElementById('pandaLogo');
+      const avatarBox = document.getElementById('avatarBox');
+      const radar1 = document.getElementById('radar1');
+      const radar2 = document.getElementById('radar2');
+      const cosmicBadge = document.getElementById('cosmicFormBadge');
+
+      aegisView.classList.remove('active');
+      purgeView.classList.remove('active');
+      currentActiveTab = targetTab;
+
+      if (targetTab === 'panda_dark') {
+   
